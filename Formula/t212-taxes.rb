@@ -30,6 +30,8 @@ class T212Taxes < Formula
 
   def install
     bin.install "t212-taxes"
+    # Create the etc directory first
+    (etc/"t212-taxes").mkpath
     etc.install "config.yaml" => "t212-taxes/config.yaml"
   end
 
