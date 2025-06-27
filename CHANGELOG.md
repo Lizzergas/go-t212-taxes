@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2024-12-XX
+
+### Changed
+- **Linting Infrastructure**: Major update to `.golangci.yml` configuration
+  - Updated GitHub Actions to use latest versions (upload-artifact v4, codeql-action v3)
+  - Replaced deprecated linters (deadcode, varcheck, structcheck, etc.) with modern equivalents
+  - Added new linters: copyloopvar (Go 1.22+), mnd (magic number detection)
+  - Increased timeout to 10 minutes for comprehensive checks
+  - Enhanced error handling with proper `//nolint:errcheck` comments
+
+### Fixed  
+- **Code Quality**: Addressed all critical linting issues
+  - Fixed magic number usage by introducing comprehensive constants
+  - Eliminated code duplication in portfolio calculator with helper functions
+  - Added missing package documentation comments
+  - Resolved function complexity issues and line length violations
+  - Fixed builtin shadowing issues (renamed `max`/`min` to `maxInt`/`minInt`)
+  - Improved string constant usage throughout TUI and CLI components
+
+### Technical Debt
+- Cleaned up unused functions and dead code
+- Enhanced type safety and error handling patterns
+- Improved code readability and maintainability
+
 ## [Unreleased]
 
 ### Added

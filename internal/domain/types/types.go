@@ -1,3 +1,4 @@
+// Package types defines core domain types and data structures for the T212 taxes application
 package types
 
 import (

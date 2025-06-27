@@ -79,8 +79,8 @@ go tool cover -html=coverage.out
 # Format code
 go fmt ./...
 
-# Lint code
-golangci-lint run
+# Lint code with extended timeout
+golangci-lint run --timeout=10m
 
 # Security scan
 gosec ./...
@@ -135,7 +135,8 @@ Understanding the project structure will help you navigate and contribute effect
 4. **Test your changes**:
    ```bash
    go test ./...
-   golangci-lint run
+   golangci-lint run --timeout=10m
+   gosec ./...
    ```
 
 ### Types of Contributions

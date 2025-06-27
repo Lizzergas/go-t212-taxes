@@ -1,3 +1,4 @@
+// Package cli provides command-line interface functionality for the T212 taxes application
 package cli
 
 import (
@@ -16,6 +17,24 @@ import (
 	"t212-taxes/internal/domain/calculator"
 	"t212-taxes/internal/domain/parser"
 	"t212-taxes/internal/domain/types"
+)
+
+// Constants for default values
+const (
+	DefaultTopPayers   = 10
+	DefaultMaxHoldings = 10
+	JSONFormat         = "json"
+	TableFormat        = "table"
+	SeparatorWidth80   = 80
+	SeparatorWidth60   = 60
+	SeparatorWidth50   = 50
+	SeparatorWidth40   = 40
+	SeparatorWidth100  = 100
+	MaxErrorsDisplayed = 10
+	LineNumberOffset   = 2
+	MinHeaderColumns   = 22
+	RegexMatchGroups   = 3
+	PercentMultiplier  = 100
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -154,20 +173,20 @@ func init() {
 	incomeCmd.Flags().String("files", "", "Comma-separated list of CSV files")
 	incomeCmd.Flags().String("output", "", "Output file for results (JSON format)")
 	incomeCmd.Flags().String("format", "table", "Output format (table, json)")
-	incomeCmd.Flags().Int("top-payers", 10, "Number of top dividend payers to display")
+	incomeCmd.Flags().Int("top-payers", DefaultTopPayers, "Number of top dividend payers to display")
 
 	// Portfolio command flags
 	portfolioCmd.Flags().String("dir", "", "Directory containing CSV files")
 	portfolioCmd.Flags().StringSlice("files", []string{}, "Comma-separated list of CSV files")
 	portfolioCmd.Flags().String("output", "", "Output file path")
-	portfolioCmd.Flags().String("format", "table", "Output format (table, json)")
-	portfolioCmd.Flags().Int("max-holdings", 10, "Maximum number of holdings to display per year")
+	portfolioCmd.Flags().String("format", TableFormat, "Output format (table, json)")
+	portfolioCmd.Flags().Int("max-holdings", DefaultMaxHoldings, "Maximum number of holdings to display per year")
 	portfolioCmd.Flags().Bool("show-all", false, "Show all positions (ignores max-holdings limit)")
 
 	// Bind flags to viper
-	viper.BindPFlag("currency", RootCmd.PersistentFlags().Lookup("currency"))
-	viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))
-	viper.BindPFlag("config", RootCmd.PersistentFlags().Lookup("config"))
+	_ = viper.BindPFlag("currency", RootCmd.PersistentFlags().Lookup("currency"))
+	_ = viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))
+	_ = viper.BindPFlag("config", RootCmd.PersistentFlags().Lookup("config"))
 }
 
 // processFiles handles the process command
@@ -302,7 +321,7 @@ func validateFiles(cmd *cobra.Command, args []string) {
 		}
 
 		err = csvParser.ValidateFormat(fileHandle)
-		fileHandle.Close()
+		fileHandle.Close() //nolint:errcheck
 
 		if err != nil {
 			fmt.Printf("❌ %s: %v\n", filepath.Base(file), err)
@@ -358,7 +377,7 @@ func getCSVFiles(cmd *cobra.Command) ([]string, error) {
 
 // printReports prints reports to console
 func printReports(yearlyReports []types.YearlyReport, overallReport *types.OverallReport, format string) {
-	if format == "json" {
+	if format == JSONFormat {
 		// Print JSON format
 		fmt.Println("Yearly Reports:")
 		for _, report := range yearlyReports {
@@ -379,42 +398,42 @@ func saveReportsToFile(yearlyReports []types.YearlyReport, overallReport *types.
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
-	if format == "json" {
+	if format == JSONFormat {
 		// Save as JSON
-		file.WriteString("{\n")
-		file.WriteString("  \"yearly_reports\": [\n")
+		file.WriteString("{\n")                       //nolint:errcheck
+		file.WriteString("  \"yearly_reports\": [\n") //nolint:errcheck
 		for i, report := range yearlyReports {
-			file.WriteString(fmt.Sprintf("    %+v", report))
+			file.WriteString(fmt.Sprintf("    %+v", report)) //nolint:errcheck
 			if i < len(yearlyReports)-1 {
-				file.WriteString(",")
+				file.WriteString(",") //nolint:errcheck
 			}
-			file.WriteString("\n")
+			file.WriteString("\n") //nolint:errcheck
 		}
-		file.WriteString("  ],\n")
-		file.WriteString(fmt.Sprintf("  \"overall_report\": %+v\n", overallReport))
-		file.WriteString("}\n")
+		file.WriteString("  ],\n")                                                  //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  \"overall_report\": %+v\n", overallReport)) //nolint:errcheck
+		file.WriteString("}\n")                                                     //nolint:errcheck
 	} else {
 		// Save as text table
-		file.WriteString("Trading 212 Tax Report\n")
-		file.WriteString("======================\n\n")
+		file.WriteString("Trading 212 Tax Report\n")   //nolint:errcheck
+		file.WriteString("======================\n\n") //nolint:errcheck
 
 		for _, report := range yearlyReports {
-			file.WriteString(fmt.Sprintf("Year %d:\n", report.Year))
-			file.WriteString(fmt.Sprintf("  Deposits: %.2f %s\n", report.TotalDeposits, report.Currency))
-			file.WriteString(fmt.Sprintf("  Transactions: %d\n", report.TotalTransactions))
-			file.WriteString(fmt.Sprintf("  Capital Gains: %.2f %s\n", report.CapitalGains, report.Currency))
-			file.WriteString(fmt.Sprintf("  Dividends: %.2f %s\n", report.Dividends, report.Currency))
-			file.WriteString(fmt.Sprintf("  Total Gains: %.2f %s\n", report.TotalGains, report.Currency))
-			file.WriteString(fmt.Sprintf("  Percentage Increase: %.2f%%\n\n", report.PercentageIncrease))
+			file.WriteString(fmt.Sprintf("Year %d:\n", report.Year))                                          //nolint:errcheck
+			file.WriteString(fmt.Sprintf("  Deposits: %.2f %s\n", report.TotalDeposits, report.Currency))     //nolint:errcheck
+			file.WriteString(fmt.Sprintf("  Transactions: %d\n", report.TotalTransactions))                   //nolint:errcheck
+			file.WriteString(fmt.Sprintf("  Capital Gains: %.2f %s\n", report.CapitalGains, report.Currency)) //nolint:errcheck
+			file.WriteString(fmt.Sprintf("  Dividends: %.2f %s\n", report.Dividends, report.Currency))        //nolint:errcheck
+			file.WriteString(fmt.Sprintf("  Total Gains: %.2f %s\n", report.TotalGains, report.Currency))     //nolint:errcheck
+			file.WriteString(fmt.Sprintf("  Percentage Increase: %.2f%%\n\n", report.PercentageIncrease))     //nolint:errcheck
 		}
 
-		file.WriteString("Overall Summary:\n")
-		file.WriteString(fmt.Sprintf("  Total Deposits: %.2f %s\n", overallReport.TotalDeposits, overallReport.Currency))
-		file.WriteString(fmt.Sprintf("  Total Transactions: %d\n", overallReport.TotalTransactions))
-		file.WriteString(fmt.Sprintf("  Total Gains: %.2f %s\n", overallReport.TotalGains, overallReport.Currency))
-		file.WriteString(fmt.Sprintf("  Overall Percentage: %.2f%%\n", overallReport.OverallPercentage))
+		file.WriteString("Overall Summary:\n")                                                                            //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  Total Deposits: %.2f %s\n", overallReport.TotalDeposits, overallReport.Currency)) //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  Total Transactions: %d\n", overallReport.TotalTransactions))                      //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  Total Gains: %.2f %s\n", overallReport.TotalGains, overallReport.Currency))       //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  Overall Percentage: %.2f%%\n", overallReport.OverallPercentage))                  //nolint:errcheck
 	}
 
 	return nil
@@ -466,7 +485,7 @@ func generateIncomeReport(cmd *cobra.Command, args []string) {
 
 // printIncomeReport prints income report to console
 func printIncomeReport(report *types.IncomeReport, format string) {
-	if format == "json" {
+	if format == JSONFormat {
 		// Print JSON format
 		fmt.Printf("%+v\n", report)
 	} else {
@@ -590,30 +609,30 @@ func saveIncomeReportToFile(report *types.IncomeReport, filename, format string)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
-	if format == "json" {
+	if format == JSONFormat {
 		// Save as JSON
-		file.WriteString(fmt.Sprintf("%+v\n", report))
+		file.WriteString(fmt.Sprintf("%+v\n", report)) //nolint:errcheck
 	} else {
 		// Save as text table
-		file.WriteString("Trading 212 Income Report\n")
-		file.WriteString("=========================\n\n")
+		file.WriteString("Trading 212 Income Report\n")   //nolint:errcheck
+		file.WriteString("=========================\n\n") //nolint:errcheck
 
-		file.WriteString(fmt.Sprintf("Total Income: %.2f %s\n", report.TotalIncome, report.Currency))
-		file.WriteString(fmt.Sprintf("Date Range: %s to %s\n\n",
+		file.WriteString(fmt.Sprintf("Total Income: %.2f %s\n", report.TotalIncome, report.Currency)) //nolint:errcheck
+		file.WriteString(fmt.Sprintf("Date Range: %s to %s\n\n",                                      //nolint:errcheck
 			report.DateRange.From.Format("2006-01-02"),
 			report.DateRange.To.Format("2006-01-02")))
 
-		file.WriteString("Dividends:\n")
-		file.WriteString(fmt.Sprintf("  Total: %.2f %s\n", report.Dividends.TotalDividends, report.Currency))
-		file.WriteString(fmt.Sprintf("  Withholding Tax: %.2f %s\n", report.Dividends.TotalWithholdingTax, report.Currency))
-		file.WriteString(fmt.Sprintf("  Net: %.2f %s\n", report.Dividends.NetDividends, report.Currency))
-		file.WriteString(fmt.Sprintf("  Count: %d\n\n", report.Dividends.DividendCount))
+		file.WriteString("Dividends:\n")                                                                                     //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  Total: %.2f %s\n", report.Dividends.TotalDividends, report.Currency))                //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  Withholding Tax: %.2f %s\n", report.Dividends.TotalWithholdingTax, report.Currency)) //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  Net: %.2f %s\n", report.Dividends.NetDividends, report.Currency))                    //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  Count: %d\n\n", report.Dividends.DividendCount))                                     //nolint:errcheck
 
-		file.WriteString("Interest:\n")
-		file.WriteString(fmt.Sprintf("  Total: %.2f %s\n", report.Interest.TotalInterest, report.Currency))
-		file.WriteString(fmt.Sprintf("  Count: %d\n", report.Interest.InterestCount))
+		file.WriteString("Interest:\n")                                                                     //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  Total: %.2f %s\n", report.Interest.TotalInterest, report.Currency)) //nolint:errcheck
+		file.WriteString(fmt.Sprintf("  Count: %d\n", report.Interest.InterestCount))                       //nolint:errcheck
 	}
 
 	return nil
@@ -652,7 +671,7 @@ func generatePortfolioReport(cmd *cobra.Command, args []string) {
 	}
 
 	// Display results
-	if format == "json" {
+	if format == JSONFormat {
 		printPortfolioReportJSON(portfolioReport)
 	} else {
 		printPortfolioReportTable(portfolioReport, maxHoldings, showAll)
@@ -663,7 +682,7 @@ func generatePortfolioReport(cmd *cobra.Command, args []string) {
 func printPortfolioReportJSON(report *types.PortfolioValuationReport) {
 	jsonData, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
-		log.Fatalf("Error marshalling portfolio report to JSON: %v", err)
+		log.Fatalf("Error marshaling portfolio report to JSON: %v", err)
 	}
 	fmt.Println(string(jsonData))
 }
@@ -721,10 +740,8 @@ func printPortfolioReportTable(report *types.PortfolioValuationReport, maxHoldin
 			limit := maxHoldings
 			if showAll {
 				limit = len(yearly.Positions)
-			} else {
-				if len(yearly.Positions) < limit {
-					limit = len(yearly.Positions)
-				}
+			} else if len(yearly.Positions) < limit {
+				limit = len(yearly.Positions)
 			}
 
 			for i := 0; i < limit; i++ {

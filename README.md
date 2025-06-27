@@ -252,13 +252,18 @@ go build -o t212-taxes ./cmd/t212-taxes
 go fmt ./...
 
 # Lint (requires golangci-lint)
-golangci-lint run
+golangci-lint run --timeout=10m
 
 # Security scan
 gosec ./...
 
 # Run benchmarks
 go test -bench=. ./...
+
+# Full CI pipeline locally
+make test
+make lint
+make security-scan
 ```
 
 ### Testing Strategy
@@ -288,15 +293,16 @@ go test -bench=. ./...
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ### Development Workflow
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes following our coding standards
-4. Add tests for new functionality
-5. Run the full test suite (`go test ./...`)
-6. Format your code (`go fmt ./...`)
-7. Commit your changes (`git commit -m 'Add amazing feature'`)
-8. Push to the branch (`git push origin feature/amazing-feature`)
-9. Open a Pull Request
+1. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Make your changes following our coding standards
+3. Add tests for new functionality
+4. Run the full test suite (`go test ./...`)
+5. Format your code (`go fmt ./...`)
+6. Run linting checks (`golangci-lint run --timeout=10m`)
+7. Check for security issues (`gosec ./...`)
+8. Commit your changes (`git commit -m 'Add amazing feature'`)
+10. Push to the branch (`git push origin feature/amazing-feature`)
+11. Open a Pull Request
 
 ### Coding Standards
 - Follow Go best practices and idioms
@@ -306,6 +312,16 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - Keep functions small and focused
 - Use interfaces for abstraction
 - Handle errors explicitly and appropriately
+
+### Updated Linting Configuration
+This project uses an updated `.golangci.yml` configuration with:
+- **Modern linters**: Updated to use current Go linting tools
+- **Deprecated linters removed**: No longer using deadcode, varcheck, structcheck, etc.
+- **New linters added**: copyloopvar (Go 1.22+), mnd (magic number detection)
+- **Extended timeout**: Set to 10 minutes for comprehensive checks
+- **Enhanced error handling**: Proper use of `//nolint:errcheck` comments for intentionally ignored errors
+
+Run with: `golangci-lint run --timeout=10m`
 
 ## 📝 License
 

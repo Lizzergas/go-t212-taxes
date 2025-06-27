@@ -90,45 +90,11 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 					yearlyDeposits += amount
 				}
 			case strings.Contains(strings.ToLower(string(tx.Action)), "dividend"):
-				var amount float64
-				var currency *string
-				var exchangeRate *float64
-
-				// Get dividend amount - check both Result and Total fields
-				if tx.Result != nil && *tx.Result != 0 {
-					amount = *tx.Result
-					currency = tx.CurrencyResult
-					exchangeRate = tx.ExchangeRate
-				} else if tx.Total != nil && *tx.Total != 0 {
-					amount = *tx.Total
-					currency = tx.CurrencyTotal
-					exchangeRate = tx.ExchangeRate
-				}
-
-				if amount != 0 {
-					convertedAmount := pc.convertToBaseCurrency(amount, currency, exchangeRate)
-					yearlyDividends += convertedAmount
-				}
+				convertedAmount := pc.extractTransactionAmount(tx)
+				yearlyDividends += convertedAmount
 			case strings.Contains(strings.ToLower(string(tx.Action)), "interest"):
-				var amount float64
-				var currency *string
-				var exchangeRate *float64
-
-				// Get interest amount - check both Result and Total fields
-				if tx.Result != nil && *tx.Result != 0 {
-					amount = *tx.Result
-					currency = tx.CurrencyResult
-					exchangeRate = tx.ExchangeRate
-				} else if tx.Total != nil && *tx.Total != 0 {
-					amount = *tx.Total
-					currency = tx.CurrencyTotal
-					exchangeRate = tx.ExchangeRate
-				}
-
-				if amount != 0 {
-					convertedAmount := pc.convertToBaseCurrency(amount, currency, exchangeRate)
-					yearlyInterest += convertedAmount
-				}
+				convertedAmount := pc.extractTransactionAmount(tx)
+				yearlyInterest += convertedAmount
 			}
 		}
 
@@ -191,7 +157,7 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 				position.UnrealizedGainLoss = position.MarketValue - position.TotalCost
 
 				if position.TotalCost > 0 {
-					position.UnrealizedGainLossPercent = (position.UnrealizedGainLoss / position.TotalCost) * 100
+					position.UnrealizedGainLossPercent = (position.UnrealizedGainLoss / position.TotalCost) * PercentMultiplier
 				}
 			} else {
 				// No price information available - use cost basis
@@ -219,7 +185,7 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 	totalUnrealizedGainLoss := totalMarketValue - totalInvested
 	var totalUnrealizedGainLossPercent float64
 	if totalInvested > 0 {
-		totalUnrealizedGainLossPercent = (totalUnrealizedGainLoss / totalInvested) * 100
+		totalUnrealizedGainLossPercent = (totalUnrealizedGainLoss / totalInvested) * PercentMultiplier
 	}
 
 	return &types.PortfolioSummary{
@@ -346,6 +312,29 @@ func (pc *PortfolioCalculator) isSellTransaction(tx types.Transaction) bool {
 }
 
 // convertToBaseCurrency converts amount to base currency
+// extractTransactionAmount extracts and converts transaction amount from Result or Total fields
+func (pc *PortfolioCalculator) extractTransactionAmount(tx types.Transaction) float64 {
+	var amount float64
+	var currency *string
+	var exchangeRate *float64
+
+	// Get amount - check both Result and Total fields
+	if tx.Result != nil && *tx.Result != 0 {
+		amount = *tx.Result
+		currency = tx.CurrencyResult
+		exchangeRate = tx.ExchangeRate
+	} else if tx.Total != nil && *tx.Total != 0 {
+		amount = *tx.Total
+		currency = tx.CurrencyTotal
+		exchangeRate = tx.ExchangeRate
+	}
+
+	if amount != 0 {
+		return pc.convertToBaseCurrency(amount, currency, exchangeRate)
+	}
+	return 0
+}
+
 func (pc *PortfolioCalculator) convertToBaseCurrency(amount float64, currency *string, exchangeRate *float64) float64 {
 	if currency == nil || *currency == pc.baseCurrency {
 		return amount

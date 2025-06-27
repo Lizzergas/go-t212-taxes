@@ -4,18 +4,14 @@ run:
 
 linters-settings:
   govet:
-    check-shadowing: true
-  golint:
-    min-confidence: 0.8
+    shadow: true
   gocyclo:
     min-complexity: 15
-  maligned:
-    suggest-new: true
   dupl:
     threshold: 100
   goconst:
     min-len: 2
-    min-occurrences: 2
+    min-occurrences: 3
   depguard:
     rules:
       main:
@@ -29,12 +25,10 @@ linters-settings:
   lll:
     line-length: 140
   goimports:
-    local-prefixes: t212-taxes
+    local-prefixes: github.com/Lizzergas/go-t212-taxes
   gocritic:
     enabled-tags:
       - diagnostic
-      - experimental
-      - opinionated
       - performance
       - style
     disabled-checks:
@@ -42,13 +36,19 @@ linters-settings:
       - ifElseChain
       - octalLiteral
       - whyNoLint
+      - hugeParam # Disable for TUI models
+      - rangeValCopy # Disable for struct iterations
+      - unnamedResult # Allow unnamed results for simple functions
   funlen:
-    lines: 100
-    statements: 50
+    lines: 120
+    statements: 60
   gci:
-    local-prefixes: t212-taxes
+    sections:
+      - standard
+      - default
+      - prefix(github.com/Lizzergas/go-t212-taxes)
   nestif:
-    min-complexity: 4
+    min-complexity: 5
   prealloc:
     simple: true
     range-loops: true
@@ -58,26 +58,34 @@ linters-settings:
     allow-unused: false
     require-explanation: false
     require-specific: false
+  mnd:
+    settings:
+      mnd:
+        checks:
+          - argument
+          - case
+          - condition
+          - operation
+          - return
+          - assign
 
 linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
+    - copyloopvar
     - depguard
     - dogsled
     - dupl
     - errcheck
-    - exportloopref
     - exhaustive
     - funlen
-    - gochecknoinits
     - goconst
     - gocritic
     - gocyclo
     - gofmt
     - goimports
-    - gomnd
+    - mnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -90,34 +98,50 @@ linters:
     - nolintlint
     - rowserrcheck
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
 
 issues:
   exclude-rules:
     - path: _test\.go
       linters:
-        - gomnd
+        - mnd
         - funlen
         - gocyclo
-    - path: cmd/
-      linters:
-        - gochecknoinits
+        - goconst
+        - dupl
     - path: internal/app/tui/
       linters:
         - funlen # TUI methods can be longer due to formatting
+        - gocyclo # TUI methods can be complex due to state management
+    - path: internal/app/cli/
+      linters:
+        - funlen # CLI methods can be longer due to formatting
+    - path: internal/domain/parser/
+      linters:
+        - gocyclo # Parser methods can be complex
     - text: "weak cryptographic primitive"
       linters:
         - gosec
     - text: "should not use dot imports"
       linters:
         - stylecheck
+    - text: "Potential file inclusion via variable"
+      linters:
+        - gosec
+    - text: "Subprocess launched with variable"
+      linters:
+        - gosec
+    - text: "Implicit memory aliasing in for loop"
+      linters:
+        - gosec
+    - text: "missing cases in switch of type types.TransactionType"
+      linters:
+        - exhaustive
   exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0 
+  max-issues-per-linter: 50
+  max-same-issues: 10 

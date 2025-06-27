@@ -1,3 +1,4 @@
+// Package tui provides terminal user interface functionality using Bubble Tea
 package tui
 
 import (
@@ -13,6 +14,23 @@ import (
 	"t212-taxes/internal/domain/types"
 )
 
+// Constants
+const (
+	ViewYearly               = "yearly"
+	ViewOverall              = "overall"
+	ViewPortfolio            = "portfolio"
+	ViewIncome               = "income"
+	ViewHelp                 = "help"
+	PaddingRight             = 2
+	MaxPositions             = 10
+	SeparatorWidth           = 85
+	AvailableHeightReduction = 20
+	MinAvailableHeight       = 5
+	CardsMargin              = 4
+	CardsSpacing             = 8
+	MaxCardWidth             = 45
+)
+
 var (
 	// Styles for the TUI
 	titleStyle = lipgloss.NewStyle().
@@ -24,7 +42,7 @@ var (
 	boxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#874BFD")).
-			Padding(1, 2).
+			Padding(1, PaddingRight).
 			Margin(1, 0)
 
 	headerStyle = lipgloss.NewStyle().
@@ -87,7 +105,7 @@ type GridLayout struct {
 // NewApp creates a new TUI application
 func NewApp() *Model {
 	return &Model{
-		CurrentView:   "help",
+		CurrentView:   ViewHelp,
 		YearlyReports: []types.YearlyReport{},
 		OverallReport: &types.OverallReport{},
 		GridCursor:    GridCursor{Row: 0, Col: 0},
@@ -96,9 +114,9 @@ func NewApp() *Model {
 
 // NewAppWithData creates a new TUI application with data
 func NewAppWithData(yearlyReports []types.YearlyReport, overallReport *types.OverallReport) *Model {
-	view := "yearly"
+	view := ViewYearly
 	if len(yearlyReports) == 0 {
-		view = "overall"
+		view = ViewOverall
 	}
 
 	model := &Model{
@@ -115,10 +133,14 @@ func NewAppWithData(yearlyReports []types.YearlyReport, overallReport *types.Ove
 }
 
 // NewAppWithPortfolioData creates a new TUI application with full data including transactions
-func NewAppWithPortfolioData(yearlyReports []types.YearlyReport, overallReport *types.OverallReport, transactions []types.Transaction) *Model {
-	view := "yearly"
+func NewAppWithPortfolioData(
+	yearlyReports []types.YearlyReport,
+	overallReport *types.OverallReport,
+	transactions []types.Transaction,
+) *Model {
+	view := ViewYearly
 	if len(yearlyReports) == 0 {
-		view = "overall"
+		view = ViewOverall
 	}
 
 	model := &Model{
@@ -136,10 +158,16 @@ func NewAppWithPortfolioData(yearlyReports []types.YearlyReport, overallReport *
 }
 
 // NewAppWithAllData creates a new TUI application with all available data
-func NewAppWithAllData(yearlyReports []types.YearlyReport, overallReport *types.OverallReport, transactions []types.Transaction, portfolioReport *types.PortfolioValuationReport, incomeReport *types.IncomeReport) *Model {
-	view := "yearly"
+func NewAppWithAllData(
+	yearlyReports []types.YearlyReport,
+	overallReport *types.OverallReport,
+	transactions []types.Transaction,
+	portfolioReport *types.PortfolioValuationReport,
+	incomeReport *types.IncomeReport,
+) *Model {
+	view := ViewYearly
 	if len(yearlyReports) == 0 {
-		view = "overall"
+		view = ViewOverall
 	}
 
 	model := &Model{
@@ -178,12 +206,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "y":
-			m.CurrentView = "yearly"
+			m.CurrentView = ViewYearly
 		case "o":
-			m.CurrentView = "overall"
+			m.CurrentView = ViewOverall
 		case "i":
 			if m.IncomeReport != nil {
-				m.CurrentView = "income"
+				m.CurrentView = ViewIncome
 			}
 		case "p":
 			// Show portfolio valuation if available
@@ -199,17 +227,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						break
 					}
 				}
-				m.CurrentView = "portfolio"
+				m.CurrentView = ViewPortfolio
 			}
 		case "h", "?":
-			m.CurrentView = "help"
+			m.CurrentView = ViewHelp
 		case "up", "k":
-			if m.CurrentView == "yearly" && len(m.YearlyReports) > 0 {
+			if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
 				newRow := m.GridCursor.Row - 1
 				if m.isValidPosition(newRow, m.GridCursor.Col) {
 					m.GridCursor.Row = newRow
 				}
-			} else if m.CurrentView == "portfolio" && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
+			} else if m.CurrentView == ViewPortfolio && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
 				// Portfolio navigation - move cursor up
 				if m.PortfolioCursor > 0 {
 					m.PortfolioCursor--
@@ -217,12 +245,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "down", "j":
-			if m.CurrentView == "yearly" && len(m.YearlyReports) > 0 {
+			if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
 				newRow := m.GridCursor.Row + 1
 				if m.isValidPosition(newRow, m.GridCursor.Col) {
 					m.GridCursor.Row = newRow
 				}
-			} else if m.CurrentView == "portfolio" && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
+			} else if m.CurrentView == ViewPortfolio && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
 				// Portfolio navigation - move cursor down
 				maxCursor := len(m.CurrentPortfolio.Positions) - 1
 				if !m.PortfolioExpanded && maxCursor > 9 {
@@ -234,21 +262,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "left":
-			if m.CurrentView == "yearly" && len(m.YearlyReports) > 0 {
+			if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
 				newCol := m.GridCursor.Col - 1
 				if m.isValidPosition(m.GridCursor.Row, newCol) {
 					m.GridCursor.Col = newCol
 				}
 			}
 		case "right", "l":
-			if m.CurrentView == "yearly" && len(m.YearlyReports) > 0 {
+			if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
 				newCol := m.GridCursor.Col + 1
 				if m.isValidPosition(m.GridCursor.Row, newCol) {
 					m.GridCursor.Col = newCol
 				}
 			}
 		case "enter", " ":
-			if m.CurrentView == "yearly" && len(m.YearlyReports) > 0 && len(m.AllTransactions) > 0 {
+			if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 && len(m.AllTransactions) > 0 {
 				// Navigate to portfolio view for selected year
 				selectedIndex := m.getSelectedIndex()
 				if selectedIndex < len(m.YearlyReports) {
@@ -258,12 +286,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Calculate portfolio for the selected year
 					portfolioCalc := calculator.NewPortfolioCalculator("EUR") // TODO: Make currency configurable
 					m.CurrentPortfolio = portfolioCalc.CalculateEndOfYearPortfolio(m.AllTransactions, selectedYear)
-					m.CurrentView = "portfolio"
+					m.CurrentView = ViewPortfolio
 					// Reset portfolio navigation
 					m.PortfolioCursor = 0
 					m.PortfolioScroll = 0
 				}
-			} else if m.CurrentView == "portfolio" && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
+			} else if m.CurrentView == ViewPortfolio && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
 				// Open browser with Yahoo Finance quote for selected stock
 				maxPositions := len(m.CurrentPortfolio.Positions)
 				if !m.PortfolioExpanded && maxPositions > 10 {
@@ -275,16 +303,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "b":
-			if m.CurrentView == "portfolio" {
+			if m.CurrentView == ViewPortfolio {
 				// Go back to yearly view
-				m.CurrentView = "yearly"
+				m.CurrentView = ViewYearly
 				m.CurrentPortfolio = nil
 				// Reset portfolio navigation state
 				m.PortfolioCursor = 0
 				m.PortfolioScroll = 0
 			}
 		case "e", "x":
-			if m.CurrentView == "portfolio" {
+			if m.CurrentView == ViewPortfolio {
 				// Toggle expand/collapse portfolio positions
 				m.PortfolioExpanded = !m.PortfolioExpanded
 				// Reset cursor and scroll when toggling
@@ -308,19 +336,19 @@ func (m Model) View() string {
 	var content string
 
 	switch m.CurrentView {
-	case "yearly":
+	case ViewYearly:
 		title = "📅 Yearly Reports"
 		content = m.renderYearlyView()
-	case "overall":
+	case ViewOverall:
 		title = "🌟 Overall Summary"
 		content = m.renderOverallView()
-	case "portfolio":
+	case ViewPortfolio:
 		title = "📊 Portfolio View"
 		content = m.renderPortfolioView()
-	case "income":
+	case ViewIncome:
 		title = "💰 Income Report"
 		content = m.renderIncomeView()
-	case "help":
+	case ViewHelp:
 		title = "❓ Help"
 		content = m.renderHelpView()
 	default:
@@ -330,7 +358,7 @@ func (m Model) View() string {
 
 	// Navigation hints
 	navHints := "y: yearly • o: overall • p: portfolio • i: income • h: help • q: quit"
-	if m.CurrentView == "portfolio" {
+	if m.CurrentView == ViewPortfolio {
 		navHints = "b: back to yearly • " + navHints
 	}
 
@@ -506,9 +534,11 @@ func (m Model) renderPortfolioView() string {
 	if len(portfolio.Positions) > 0 {
 		content.WriteString("\n")
 		if m.PortfolioExpanded {
-			content.WriteString(headerStyle.Render(fmt.Sprintf("🎯 All Holdings (%d positions) - Position %d/%d", len(portfolio.Positions), m.PortfolioCursor+1, len(portfolio.Positions))))
+			content.WriteString(headerStyle.Render(fmt.Sprintf(
+				"🎯 All Holdings (%d positions) - Position %d/%d",
+				len(portfolio.Positions), m.PortfolioCursor+1, len(portfolio.Positions))))
 		} else {
-			visiblePositions := min(len(portfolio.Positions), 10)
+			visiblePositions := minInt(len(portfolio.Positions), MaxPositions)
 			content.WriteString(headerStyle.Render(fmt.Sprintf("🎯 Top Holdings - Position %d/%d", m.PortfolioCursor+1, visiblePositions)))
 		}
 		content.WriteString("\n")
@@ -516,7 +546,7 @@ func (m Model) renderPortfolioView() string {
 		// Table header with market data
 		content.WriteString(fmt.Sprintf("%-8s %8s %10s %12s %12s %10s %8s\n",
 			"Ticker", "Shares", "Last Price", "Total Cost", "Market Val", "P&L", "P&L %"))
-		content.WriteString(strings.Repeat("-", 85))
+		content.WriteString(strings.Repeat("-", SeparatorWidth))
 		content.WriteString("\n")
 
 		// Calculate scrollable view
@@ -526,14 +556,14 @@ func (m Model) renderPortfolioView() string {
 		}
 
 		// Calculate available height for positions (terminal height minus headers/footers)
-		availableHeight := m.Height - 20 // Reserve space for headers, summary, and navigation
-		if availableHeight < 5 {
-			availableHeight = 5
+		availableHeight := m.Height - AvailableHeightReduction // Reserve space for headers, summary, and navigation
+		if availableHeight < MinAvailableHeight {
+			availableHeight = MinAvailableHeight
 		}
 
 		// Calculate visible range
 		startIdx := m.PortfolioScroll
-		endIdx := min(startIdx+availableHeight, maxPositions)
+		endIdx := minInt(startIdx+availableHeight, maxPositions)
 
 		// Show scroll indicator if needed
 		if maxPositions > availableHeight {
@@ -599,7 +629,7 @@ func (m Model) renderPortfolioView() string {
 
 		// Show expand/collapse information
 		if !m.PortfolioExpanded && len(portfolio.Positions) > 10 {
-			remaining := len(portfolio.Positions) - 10
+			remaining := len(portfolio.Positions) - MaxPositions
 			content.WriteString(fmt.Sprintf("\n📋 Total: %d positions (%d more available with expand)\n", len(portfolio.Positions), remaining))
 			content.WriteString(infoStyle.Render("Press 'e' or 'x' to expand all positions"))
 		} else if m.PortfolioExpanded && len(portfolio.Positions) > 10 {
@@ -718,51 +748,6 @@ financial metrics for tax purposes.
 	return boxStyle.Render(infoStyle.Render(help))
 }
 
-// formatYearlyReport formats a yearly report for display
-func (m Model) formatYearlyReport(report types.YearlyReport) string {
-	var content strings.Builder
-
-	// Header
-	content.WriteString(headerStyle.Render(fmt.Sprintf("📅 %d Financial Overview", report.Year)))
-	content.WriteString("\n")
-
-	// Metrics
-	content.WriteString(fmt.Sprintf("💰 Deposits: %s\n",
-		currencyStyle.Render(formatCurrency(report.TotalDeposits, report.Currency))))
-
-	content.WriteString(fmt.Sprintf("💳 Transactions: %s\n",
-		valueStyle.Render(fmt.Sprintf("%d", report.TotalTransactions))))
-
-	content.WriteString(fmt.Sprintf("📈 Capital Gains: %s\n",
-		currencyStyle.Render(formatCurrency(report.CapitalGains, report.Currency))))
-
-	content.WriteString(fmt.Sprintf("💎 Dividends: %s\n",
-		currencyStyle.Render(formatCurrency(report.Dividends, report.Currency))))
-
-	if report.Interest > 0 {
-		content.WriteString(fmt.Sprintf("🏦 Interest: %s\n",
-			currencyStyle.Render(formatCurrency(report.Interest, report.Currency))))
-	}
-
-	content.WriteString(fmt.Sprintf("🎯 Total Gains: %s\n",
-		currencyStyle.Render(formatCurrency(report.TotalGains, report.Currency))))
-
-	// Percentage with color coding
-	percentageText := fmt.Sprintf("%.2f%%", report.PercentageIncrease)
-	var percentageStyled string
-	if report.PercentageIncrease > 0 {
-		percentageStyled = infoStyle.Render(percentageText)
-	} else if report.PercentageIncrease < 0 {
-		percentageStyled = errorStyle.Render(percentageText)
-	} else {
-		percentageStyled = valueStyle.Render(percentageText)
-	}
-
-	content.WriteString(fmt.Sprintf("📊 Money Increase: %s", percentageStyled))
-
-	return content.String()
-}
-
 // formatOverallReport formats the overall report for display
 func (m Model) formatOverallReport(report types.OverallReport) string {
 	var content strings.Builder
@@ -832,7 +817,7 @@ func (m Model) formatOverallReport(report types.OverallReport) string {
 			totalValue := report.TotalDeposits + report.TotalGains
 			content.WriteString(fmt.Sprintf("💼 Total Invested + Realized Gains: %s\n",
 				currencyStyle.Render(formatCurrency(totalValue, report.Currency))))
-			content.WriteString(fmt.Sprintf("💡 Note: This is deposits + realized gains, not current market value\n"))
+			content.WriteString("💡 Note: This is deposits + realized gains, not current market value\n")
 		}
 	}
 
@@ -975,12 +960,12 @@ func (m *Model) updateGridLayout() {
 	minItemHeight := 14 // Minimum height for year card (increased for labels)
 
 	// Calculate available space (accounting for borders, padding, and navigation help)
-	availableWidth := m.Width - 4   // Account for margins
-	availableHeight := m.Height - 8 // Account for title, help text, margins
+	availableWidth := m.Width - CardsMargin    // Account for margins
+	availableHeight := m.Height - CardsSpacing // Account for title, help text, margins
 
 	// Calculate optimal number of columns
-	maxCols := max(1, availableWidth/minItemWidth)
-	optimalCols := min(maxCols, totalItems)
+	maxCols := maxInt(1, availableWidth/minItemWidth)
+	optimalCols := minInt(maxCols, totalItems)
 
 	// Try different column counts to find the best fit
 	bestCols := 1
@@ -994,7 +979,7 @@ func (m *Model) updateGridLayout() {
 	// Calculate final layout
 	columns := bestCols
 	rows := (totalItems + columns - 1) / columns
-	itemWidth := min(availableWidth/columns, 45) // Max width to prevent overly wide cards
+	itemWidth := minInt(availableWidth/columns, MaxCardWidth) // Max width to prevent overly wide cards
 	itemHeight := minItemHeight
 
 	m.GridLayout = GridLayout{
@@ -1040,14 +1025,14 @@ func (m *Model) isValidPosition(row, col int) bool {
 }
 
 // Helper functions for grid calculations
-func max(a, b int) int {
+func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
@@ -1057,9 +1042,9 @@ func min(a, b int) int {
 // adjustPortfolioScroll adjusts the scroll offset to keep the cursor visible
 func (m *Model) adjustPortfolioScroll() {
 	// Calculate available height for portfolio positions (subtract header lines)
-	availableHeight := m.Height - 20 // Reserve space for headers, summary, and navigation
-	if availableHeight < 5 {
-		availableHeight = 5 // Minimum viewable area
+	availableHeight := m.Height - AvailableHeightReduction // Reserve space for headers, summary, and navigation
+	if availableHeight < MinAvailableHeight {
+		availableHeight = MinAvailableHeight // Minimum viewable area
 	}
 
 	// Adjust scroll to keep cursor visible

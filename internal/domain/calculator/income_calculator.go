@@ -7,6 +7,13 @@ import (
 	"t212-taxes/internal/domain/types"
 )
 
+// Constants
+const (
+	DaysInYear             = 365
+	UnknownSource          = "Unknown"
+	LocalPercentMultiplier = 100.0
+)
+
 // IncomeCalculator handles dividend and interest calculations and reporting
 type IncomeCalculator struct {
 	baseCurrency string
@@ -192,7 +199,7 @@ func (ic *IncomeCalculator) extractInterestDetails(record *types.InterestRecord,
 	} else if strings.Contains(notes, "account") {
 		record.Source = "Account"
 	} else {
-		record.Source = "Unknown"
+		record.Source = UnknownSource
 	}
 
 	// Try to identify period
@@ -207,7 +214,7 @@ func (ic *IncomeCalculator) extractInterestDetails(record *types.InterestRecord,
 	} else if strings.Contains(notes, "annual") || strings.Contains(notes, "yearly") {
 		record.Period = "Annual"
 	} else {
-		record.Period = "Unknown"
+		record.Period = UnknownSource
 	}
 }
 
@@ -240,7 +247,7 @@ func (ic *IncomeCalculator) calculateDividendSummary(records []types.DividendRec
 			securityKey = record.ISIN
 		}
 		if securityKey == "" {
-			securityKey = "Unknown"
+			securityKey = UnknownSource
 		}
 		summary.BySecurity[securityKey] += record.NetAmount
 
@@ -291,7 +298,7 @@ func (ic *IncomeCalculator) calculateInterestSummary(records []types.InterestRec
 		// Group by source
 		source := record.Source
 		if source == "" {
-			source = "Unknown"
+			source = UnknownSource
 		}
 		summary.BySource[source] += record.Amount
 
@@ -352,7 +359,7 @@ func (ic *IncomeCalculator) GetTopDividendPayers(records []types.DividendRecord,
 			securityKey = record.ISIN
 		}
 		if securityKey == "" {
-			securityKey = "Unknown"
+			securityKey = UnknownSource
 		}
 		securityMap[securityKey] += record.NetAmount
 	}
@@ -430,7 +437,7 @@ func (ic *IncomeCalculator) CalculateDividendYield(dividendAmount, sharePrice, s
 		return 0
 	}
 
-	return (dividendAmount / totalValue) * 100
+	return (dividendAmount / totalValue) * LocalPercentMultiplier
 }
 
 // CalculateEffectiveInterestRate calculates effective interest rate
@@ -440,6 +447,6 @@ func (ic *IncomeCalculator) CalculateEffectiveInterestRate(interestAmount, princ
 	}
 
 	// Calculate annualized rate
-	annualizedInterest := (interestAmount / float64(days)) * 365
-	return (annualizedInterest / principal) * 100
+	annualizedInterest := (interestAmount / float64(days)) * DaysInYear
+	return (annualizedInterest / principal) * LocalPercentMultiplier
 }

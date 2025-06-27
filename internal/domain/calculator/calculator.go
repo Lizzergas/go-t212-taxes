@@ -1,9 +1,21 @@
+// Package calculator provides tax calculation functionality for various jurisdictions
 package calculator
 
 import (
 	"log"
 
 	"t212-taxes/internal/domain/types"
+)
+
+// Tax rate constants
+const (
+	USTaxRate           = 0.15
+	UKCapitalGains      = 0.10
+	UKDividendRate      = 0.075
+	UKCapitalAllowance  = 6000
+	UKDividendAllowance = 2000
+	BGCapitalGains      = 0.10
+	BGDividendRate      = 0.05
 )
 
 // Calculator handles tax calculations for different jurisdictions
@@ -40,8 +52,8 @@ func NewTaxCalculator() *TaxCalculator {
 			"US": {
 				Code:                "US",
 				Name:                "United States",
-				CapitalGainsTaxRate: 0.15,
-				DividendTaxRate:     0.15,
+				CapitalGainsTaxRate: USTaxRate,
+				DividendTaxRate:     USTaxRate,
 				Allowances: TaxAllowances{
 					CapitalGains: 0,
 					Dividends:    0,
@@ -50,18 +62,18 @@ func NewTaxCalculator() *TaxCalculator {
 			"UK": {
 				Code:                "UK",
 				Name:                "United Kingdom",
-				CapitalGainsTaxRate: 0.10,
-				DividendTaxRate:     0.075,
+				CapitalGainsTaxRate: UKCapitalGains,
+				DividendTaxRate:     UKDividendRate,
 				Allowances: TaxAllowances{
-					CapitalGains: 6000,
-					Dividends:    2000,
+					CapitalGains: UKCapitalAllowance,
+					Dividends:    UKDividendAllowance,
 				},
 			},
 			"BG": {
 				Code:                "BG",
 				Name:                "Bulgaria",
-				CapitalGainsTaxRate: 0.10,
-				DividendTaxRate:     0.05,
+				CapitalGainsTaxRate: BGCapitalGains,
+				DividendTaxRate:     BGDividendRate,
 				Allowances: TaxAllowances{
 					CapitalGains: 0,
 					Dividends:    0,

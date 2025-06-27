@@ -1,3 +1,4 @@
+// Package parser provides CSV parsing functionality for Trading 212 export files
 package parser
 
 import (
@@ -14,6 +15,14 @@ import (
 	"time"
 
 	"t212-taxes/internal/domain/types"
+)
+
+// Constants
+const (
+	MaxErrorsDisplayed = 10
+	LineNumberOffset   = 2
+	MinHeaderColumns   = 22
+	RegexMatchGroups   = 3
 )
 
 // Parser handles CSV parsing for T212 files
@@ -75,8 +84,8 @@ func (p *CSVParser) Parse(reader io.Reader) (*types.ProcessingResult, error) {
 		transaction, err := p.parseTransaction(header, record)
 		if err != nil {
 			failedParsed++
-			if failedParsed <= 10 { // Only show first 10 errors to avoid spam
-				log.Printf("Warning: failed to parse transaction at line %d: %v", i+2, err)
+			if failedParsed <= MaxErrorsDisplayed { // Only show first 10 errors to avoid spam
+				log.Printf("Warning: failed to parse transaction at line %d: %v", i+LineNumberOffset, err)
 			}
 			continue
 		}
@@ -115,7 +124,7 @@ func (p *CSVParser) ParseFile(filename string) (*types.ProcessingResult, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %s: %w", filename, err)
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	return p.Parse(file)
 }
@@ -212,7 +221,7 @@ func (p *CSVParser) validateHeader(header []string) error {
 	// - 2022-2023: 22 columns (missing Result field)
 	// - 2021: 23 columns
 	// - 2024+: 27 columns (added currency conversion fields)
-	if len(header) < 22 {
+	if len(header) < MinHeaderColumns {
 		return fmt.Errorf("CSV has %d columns, expected at least 22", len(header))
 	}
 
@@ -438,7 +447,7 @@ func (p *CSVParser) ValidateYearlyStructure(filenames []string) error {
 		base := filepath.Base(filename)
 		matches := pattern.FindStringSubmatch(base)
 
-		if len(matches) != 3 {
+		if len(matches) != RegexMatchGroups {
 			return fmt.Errorf("invalid filename format: %s (expected: from_YYYY-MM-DD_to_YYYY-MM-DD_[hash].csv)", base)
 		}
 
@@ -471,20 +480,4 @@ func (p *CSVParser) ValidateYearlyStructure(filenames []string) error {
 	}
 
 	return nil
-}
-
-// isNumeric checks if a string can be parsed as a float
-func isNumeric(s string) bool {
-	if s == "" || s == "Not available" {
-		return true // These are acceptable for numeric fields
-	}
-	_, err := strconv.ParseFloat(s, 64)
-	return err == nil
-}
-
-// isUUID checks if a string looks like a UUID
-func isUUID(s string) bool {
-	// Check for UUID pattern: 8-4-4-4-12 hex digits
-	matched, _ := regexp.MatchString(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$`, s)
-	return matched
 }

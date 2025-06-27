@@ -11,6 +11,11 @@ import (
 	"t212-taxes/internal/domain/types"
 )
 
+// Constants
+const (
+	PercentMultiplier = 100.0
+)
+
 // FinancialCalculator handles financial calculations and reporting
 type FinancialCalculator struct {
 	baseCurrency string
@@ -81,7 +86,7 @@ func (fc *FinancialCalculator) CalculateOverallReport(yearlyReports []types.Year
 
 	// Calculate overall percentage
 	if overall.TotalDeposits > 0 {
-		overall.OverallPercentage = (overall.TotalGains / overall.TotalDeposits) * 100
+		overall.OverallPercentage = (overall.TotalGains / overall.TotalDeposits) * PercentMultiplier
 	}
 
 	return overall
@@ -156,7 +161,7 @@ func (fc *FinancialCalculator) calculateYearlyReport(year int, transactions []ty
 
 	// Calculate percentage increase
 	if report.TotalDeposits > 0 {
-		report.PercentageIncrease = (report.TotalGains / report.TotalDeposits) * 100
+		report.PercentageIncrease = (report.TotalGains / report.TotalDeposits) * PercentMultiplier
 	}
 
 	return report, nil

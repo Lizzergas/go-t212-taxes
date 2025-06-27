@@ -40,12 +40,18 @@ go test ./internal/domain/parser/...
 # Format code
 go fmt ./...
 
-# Lint code (requires golangci-lint)
-golangci-lint run
+# Lint code with extended timeout (requires golangci-lint)
+golangci-lint run --timeout=10m
+
+# Check for security issues
+gosec ./...
 
 # Install dependencies
 go mod download
 go mod tidy
+
+# Run full quality checks
+make lint-all
 ```
 
 ## Architecture Overview
