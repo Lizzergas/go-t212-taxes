@@ -1,134 +1,153 @@
-# T212 Taxes
+# T212 Taxes 📊
 
-A comprehensive Go application for processing Trading 212 CSV exports and calculating tax obligations with modern tooling and scalable architecture.
+> A comprehensive Go application for processing Trading 212 CSV exports and calculating tax obligations with modern tooling and beautiful UI.
 
-## Author
+[![CI/CD](https://github.com/Lizzergas/go-t212-taxes/workflows/CI%2FCD%20Pipeline/badge.svg)](hhttps://github.com/Lizzergas/go-t212-taxes/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Lizzergas/go-t212-taxes)](https://goreportcard.com/report/github.com/Lizzergas/go-t212-taxes)
+[![codecov](https://codecov.io/gh/Lizzergas/go-t212-taxes/branch/main/graph/badge.svg)](https://codecov.io/gh/Lizzergas/go-t212-taxes)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/Lizzergas/go-t212-taxes)](https://github.com/Lizzergas/go-t212-taxes)
+[![Release](https://img.shields.io/github/v/release/Lizzergas/go-t212-taxes)](https://github.com/Lizzergas/go-t212-taxes/releases)
+[![Docker](https://img.shields.io/badge/docker-available-blue.svg)](https://github.com/Lizzergas/go-t212-taxes/pkgs/container/go-t212-taxes)
 
-**lizz**
+## ✨ Demo
 
-## Features
+![T212 Taxes Demo](./demo.gif)
 
-- 📊 **CSV Processing**: Parse and validate Trading 212 export files with robust error handling
-- 🧮 **Tax Calculations**: Calculate various tax scenarios and obligations for multiple jurisdictions
-- 🎨 **Modern TUI**: Beautiful terminal user interface using Bubble Tea and Lip Gloss
-- 🔧 **Type Safety**: Comprehensive struct validation and error handling
-- 🧪 **Testing**: Extensive test suite with table-driven tests and benchmarks
-- 📦 **CLI Tool**: Feature-rich command-line interface with Cobra
-- 🚀 **Scalable**: Clean architecture with dependency injection and interfaces
-- ⚡ **Performance**: Optimized for handling large CSV files with streaming processing
+*Interactive TUI with portfolio navigation, real-time calculations, and browser integration*
 
-## Installation
+## 🚀 Features
+
+### 📊 **Comprehensive Analysis**
+- **CSV Processing**: Parse and validate Trading 212 export files with robust error handling
+- **Tax Calculations**: Calculate capital gains, dividends, and tax obligations for multiple jurisdictions
+- **Portfolio Valuation**: Real-time portfolio analysis with market values and P&L tracking
+- **Income Reports**: Detailed dividend and interest analysis with withholding tax calculations
+
+### 🎨 **Modern Interface**
+- **Beautiful TUI**: Interactive terminal UI built with Bubble Tea and Lip Gloss
+- **Scrollable Portfolio**: Navigate through positions with arrow keys and cursor highlighting
+- **Browser Integration**: Open Yahoo Finance quotes directly from the TUI (Enter key)
+- **Responsive Design**: Adapts to terminal size with smart scrolling
+
+### 🔧 **Developer Experience**
+- **Type Safety**: Comprehensive struct validation and error handling
+- **CLI Tool**: Feature-rich command-line interface with Cobra
+- **Testing**: Extensive test suite with >90% coverage
+- **Performance**: Optimized for handling large CSV files
+
+### 🌍 **Multi-Platform**
+- **Cross-Platform**: Windows, macOS, and Linux support
+- **Docker**: Containerized deployment available
+- **CI/CD**: Automated testing, building, and releases
+
+## 📥 Installation
+
+### Pre-built Binaries
+
+Download the latest release for your platform:
+
+```bash
+# macOS (Apple Silicon)
+curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/go-t212-taxes-darwin-arm64 -o t212-taxes
+chmod +x t212-taxes
+
+# macOS (Intel)
+curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/go-t212-taxes-darwin-amd64 -o t212-taxes
+chmod +x t212-taxes
+
+# Linux (x64)
+curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/go-t212-taxes-linux-amd64 -o t212-taxes
+chmod +x t212-taxes
+
+# Windows (x64)
+curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/go-t212-taxes-windows-amd64.exe -o t212-taxes.exe
+```
+
+### Go Install
+
+```bash
+go install github.com/Lizzergas/go-t212-taxes/cmd/go-t212-taxes@latest
+```
+
+### Docker
+
+```bash
+# Run directly
+docker run --rm -v $(pwd)/exports:/app/data ghcr.io/Lizzergas/go-t212-taxes:latest analyze --dir /app/data
+
+# Interactive mode
+docker run --rm -it -v $(pwd)/exports:/app/data ghcr.io/Lizzergas/go-t212-taxes:latest
+```
 
 ### From Source
 
 ```bash
-git clone https://github.com/lizz/t212-taxes.git
+git clone https://github.com/Lizzergas/go-t212-taxes.git
 cd t212-taxes
 go build -o t212-taxes ./cmd/t212-taxes
 ```
 
-### Using Go Install
+## 🎯 Quick Start
 
+### 1. Export Your Data
+Export your Trading 212 data as CSV files using the format: `from_YYYY-MM-DD_to_YYYY-MM-DD_[hash].csv`
+
+### 2. Interactive Analysis
 ```bash
-go install github.com/lizz/t212-taxes/cmd/t212-taxes@latest
+# Launch interactive TUI
+./t212-taxes analyze --dir ./exports
+
+# Navigate with:
+# y - Yearly reports
+# p - Portfolio view  
+# i - Income analysis
+# ↑↓ - Navigate positions
+# Enter - Open Yahoo Finance quotes
 ```
 
-## Development
-
-### Prerequisites
-
-- Go 1.21 or later
-- Make (optional, for convenience commands)
-
-### Setup
-
+### 3. Command Line Reports
 ```bash
-# Clone the repository
-git clone https://github.com/lizz/t212-taxes.git
-cd t212-taxes
+# Process files and generate reports
+./t212-taxes process --dir ./exports
 
-# Install dependencies
-go mod download
+# Portfolio analysis
+./t212-taxes portfolio --dir ./exports
 
-# Run tests
-go test ./...
+# Income analysis  
+./t212-taxes income --dir ./exports
 
-# Build the application
-go build -o t212-taxes ./cmd/t212-taxes
+# Export to JSON
+./t212-taxes portfolio --dir ./exports --format json --output portfolio.json
 ```
 
-### Development Commands
+## 🎮 TUI Controls
 
-```bash
-# Run tests with coverage
-go test -v -race -coverprofile=coverage.out ./...
+| Key | Action |
+|-----|--------|
+| `y` | View yearly reports |
+| `p` | Portfolio analysis |
+| `i` | Income reports |
+| `o` | Overall summary |
+| `h` | Help screen |
+| `↑↓` | Navigate positions |
+| `Enter` | Open stock quote in browser |
+| `e/x` | Expand/collapse portfolio |
+| `b` | Go back |
+| `q` | Quit |
 
-# View coverage report
-go tool cover -html=coverage.out
+## 🏗️ Architecture
 
-# Run benchmarks
-go test -bench=. ./...
-
-# Format code
-go fmt ./...
-
-# Lint code (requires golangci-lint)
-golangci-lint run
-
-# Build for multiple platforms
-make build-all
-
-# Run the application in development
-go run ./cmd/t212-taxes
-```
-
-## Usage
-
-### Basic Usage
-
-```bash
-# Interactive mode (default)
-./t212-taxes
-
-# Process a specific CSV file
-./t212-taxes process --file ./data/transactions.csv
-
-# Calculate taxes for a specific year
-./t212-taxes calculate --year 2024 --jurisdiction US
-
-# Export results in different formats
-./t212-taxes export --format json --output results.json
-```
-
-### Command Line Options
-
-```bash
-# Show help
-./t212-taxes --help
-
-# Version information
-./t212-taxes version
-
-# Enable verbose logging
-./t212-taxes --verbose process --file data.csv
-
-# Use different configuration file
-./t212-taxes --config ./config.yaml process --file data.csv
-```
-
-## Project Structure
+This project follows **Clean Architecture** principles:
 
 ```
-.
-├── cmd/
-│   └── t212-taxes/          # Main application entry point
-│       └── main.go
+├── cmd/t212-taxes/          # Application entry point
 ├── internal/
 │   ├── app/                 # Application layer
 │   │   ├── cli/            # CLI commands and handlers
 │   │   ├── config/         # Configuration management
 │   │   └── tui/            # Terminal UI components
-│   ├── domain/             # Business logic and entities
+│   ├── domain/             # Business logic
 │   │   ├── calculator/     # Tax calculation engines
 │   │   ├── parser/         # CSV parsing and validation
 │   │   └── types/          # Core domain types
@@ -137,65 +156,34 @@ go run ./cmd/t212-taxes
 │   │   ├── logger/        # Logging implementation
 │   │   └── storage/       # Data persistence
 │   └── pkg/               # Shared utilities
-│       ├── currency/      # Currency conversion utilities
-│       ├── date/          # Date manipulation helpers
-│       └── validation/    # Input validation helpers
-├── api/                   # API definitions (if needed)
-├── configs/               # Configuration files
-├── data/                  # Sample data and test files
-│   ├── sample/           # Example CSV files
-│   └── schemas/          # Validation schemas
-├── docs/                 # Documentation
-├── scripts/              # Build and deployment scripts
-├── test/                 # Integration and end-to-end tests
-└── web/                  # Web interface (future)
+├── data/sample/            # Example CSV files
+├── docs/                   # Documentation
+└── scripts/               # Build and deployment scripts
 ```
 
-## Architecture
-
-This project follows Clean Architecture principles with clear separation of concerns:
-
-- **Domain Layer**: Core business logic, entities, and use cases
-- **Application Layer**: Orchestration of domain logic and external interfaces
-- **Infrastructure Layer**: External dependencies (file systems, databases, APIs)
-- **Interface Layer**: CLI, TUI, and future web interfaces
-
 ### Key Design Patterns
-
-- **Dependency Injection**: All dependencies are injected through interfaces
+- **Dependency Injection**: All dependencies injected through interfaces
 - **Repository Pattern**: Abstract data access with pluggable implementations
-- **Command Pattern**: CLI commands with consistent structure and error handling
 - **Strategy Pattern**: Different tax calculation strategies for various jurisdictions
-- **Observer Pattern**: Event-driven processing for real-time updates
+- **Command Pattern**: CLI commands with consistent structure
 
-## CSV Format Support
+## 📊 Supported Calculations
 
-The application supports various Trading 212 CSV export formats:
+### Tax Jurisdictions
+- **🇺🇸 United States**: Federal tax calculations with state considerations
+- **🇬🇧 United Kingdom**: Capital gains and dividend tax with allowances
+- **🇪🇺 European Union**: General EU tax framework
+- **🇧🇬 Bulgaria**: Local tax rules and regulations
 
-### Transaction History
+### Transaction Types
 - Market orders (buy/sell)
 - Limit orders
-- Stop orders
+- Stop orders  
 - Dividend payments
 - Interest payments
 - Deposits and withdrawals
 
-### Data Validation
-- ISIN code validation
-- Ticker symbol validation
-- Currency code validation
-- Date format handling
-- Numeric precision handling
-
-## Tax Calculations
-
-### Supported Jurisdictions
-- **United States**: Federal tax calculations with state considerations
-- **United Kingdom**: Capital gains and dividend tax with allowances
-- **European Union**: General EU tax framework
-- **Bulgaria**: Local tax rules and regulations
-
-### Calculation Features
+### Features
 - Capital gains/losses with FIFO/LIFO methods
 - Dividend tax calculations with withholding tax credits
 - Wash sale rule applications
@@ -203,11 +191,9 @@ The application supports various Trading 212 CSV export formats:
 - Tax year boundary handling
 - Detailed audit trails
 
-## Configuration
+## ⚙️ Configuration
 
-The application supports multiple configuration methods:
-
-### Configuration File (config.yaml)
+### Configuration File (`config.yaml`)
 ```yaml
 app:
   log_level: "info"
@@ -234,37 +220,77 @@ export T212_CSV_DELIMITER=";"
 ### Command Line Flags
 All configuration options can be overridden via command line flags.
 
-## Testing
+## 🧪 Development
 
-### Running Tests
+### Prerequisites
+- Go 1.21 or later
+- Make (optional, for convenience commands)
 
+### Setup
 ```bash
-# Run all tests
+# Clone repository
+git clone https://github.com/Lizzergas/go-t212-taxes.git
+cd t212-taxes
+
+# Install dependencies
+go mod download
+
+# Run tests
 go test ./...
 
-# Run tests with coverage
+# Run with coverage
 go test -v -race -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
 
-# Run specific test suite
-go test ./internal/domain/calculator/...
-
-# Run benchmarks
-go test -bench=. ./internal/domain/parser/
+# Build
+go build -o t212-taxes ./cmd/t212-taxes
 ```
 
-### Test Structure
+### Code Quality
+```bash
+# Format code
+go fmt ./...
 
+# Lint (requires golangci-lint)
+golangci-lint run
+
+# Security scan
+gosec ./...
+
+# Run benchmarks
+go test -bench=. ./...
+```
+
+### Testing Strategy
 - **Unit Tests**: Test individual functions and methods
 - **Integration Tests**: Test component interactions
 - **Table-Driven Tests**: Comprehensive test cases with multiple scenarios
 - **Benchmark Tests**: Performance testing for critical paths
 - **Golden File Tests**: Snapshot testing for complex outputs
 
-## Contributing
+## 📈 Performance
 
+- **Streaming Processing**: Handle large CSV files without loading everything into memory
+- **Concurrent Processing**: Utilize goroutines for CPU-intensive calculations
+- **Memory Optimization**: Efficient data structures and garbage collection awareness
+- **Caching**: Cache exchange rates and frequently accessed data
+
+## 🔒 Security
+
+- Input validation for all user-provided data
+- Secure handling of financial information
+- No storage of sensitive data in logs
+- Configuration file security best practices
+- Dependency vulnerability scanning via CI/CD
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Development Workflow
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes following the coding standards
+3. Make your changes following our coding standards
 4. Add tests for new functionality
 5. Run the full test suite (`go test ./...`)
 6. Format your code (`go fmt ./...`)
@@ -273,7 +299,6 @@ go test -bench=. ./internal/domain/parser/
 9. Open a Pull Request
 
 ### Coding Standards
-
 - Follow Go best practices and idioms
 - Use meaningful variable and function names
 - Write comprehensive tests for new functionality
@@ -282,39 +307,34 @@ go test -bench=. ./internal/domain/parser/
 - Use interfaces for abstraction
 - Handle errors explicitly and appropriately
 
-## Performance Considerations
+## 📝 License
 
-- **Streaming Processing**: Handle large CSV files without loading everything into memory
-- **Concurrent Processing**: Utilize goroutines for CPU-intensive calculations
-- **Memory Optimization**: Efficient data structures and garbage collection awareness
-- **Caching**: Cache exchange rates and frequently accessed data
-- **Profiling**: Built-in profiling support for performance analysis
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Security
+## 🙏 Acknowledgments
 
-- Input validation for all user-provided data
-- Secure handling of financial information
-- No storage of sensitive data in logs
-- Configuration file security best practices
-- Dependency vulnerability scanning
+- **[Bubble Tea](https://github.com/charmbracelet/bubbletea)** - The TUI framework
+- **[Lip Gloss](https://github.com/charmbracelet/lipgloss)** - Terminal styling
+- **[Cobra](https://github.com/spf13/cobra)** - CLI framework
+- **[Viper](https://github.com/spf13/viper)** - Configuration management
 
-## License
+## 📞 Support
 
-MIT License - see [LICENSE](LICENSE) file for details.
+- **Issues**: Report bugs and feature requests on [GitHub Issues](https://github.com/Lizzergas/go-t212-taxes/issues)
+- **Discussions**: Join our [GitHub Discussions](https://github.com/Lizzergas/go-t212-taxes/discussions)
+- **Documentation**: Comprehensive documentation in the [`docs/`](docs/) directory
 
-## Support
-
-- **Issues**: Report bugs and feature requests on GitHub Issues
-- **Documentation**: Comprehensive documentation in the `docs/` directory
-- **Examples**: Sample CSV files and usage examples in `data/sample/`
-
-## Roadmap
+## 🗺️ Roadmap
 
 - [ ] Web interface for non-technical users
 - [ ] API server mode for integration with other tools
-- [ ] Additional tax jurisdictions
+- [ ] Additional tax jurisdictions (Canada, Australia, Germany)
 - [ ] Real-time exchange rate integration
 - [ ] Advanced reporting and visualization
 - [ ] Plugin system for custom calculations
 - [ ] Database storage for historical data
 - [ ] Multi-user support with authentication
+
+---
+
+⚠️ **Disclaimer**: This tool provides estimates for informational purposes. Always consult a tax professional for official tax advice.

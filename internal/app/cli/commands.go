@@ -56,7 +56,7 @@ Examples:
 	Run: processFiles,
 }
 
-// analyzeCmd represents the analyze command  
+// analyzeCmd represents the analyze command
 var analyzeCmd = &cobra.Command{
 	Use:   "analyze",
 	Short: "Analyze CSV files and show detailed reports",
@@ -282,7 +282,7 @@ func validateFiles(cmd *cobra.Command, args []string) {
 	csvParser := parser.NewCSVParser()
 
 	fmt.Printf("Validating %d CSV files...\n", len(files))
-	
+
 	// Validate yearly structure
 	err = csvParser.ValidateYearlyStructure(files)
 	if err != nil {
@@ -303,7 +303,7 @@ func validateFiles(cmd *cobra.Command, args []string) {
 
 		err = csvParser.ValidateFormat(fileHandle)
 		fileHandle.Close()
-		
+
 		if err != nil {
 			fmt.Printf("❌ %s: %v\n", filepath.Base(file), err)
 			allValid = false
@@ -399,7 +399,7 @@ func saveReportsToFile(yearlyReports []types.YearlyReport, overallReport *types.
 		// Save as text table
 		file.WriteString("Trading 212 Tax Report\n")
 		file.WriteString("======================\n\n")
-		
+
 		for _, report := range yearlyReports {
 			file.WriteString(fmt.Sprintf("Year %d:\n", report.Year))
 			file.WriteString(fmt.Sprintf("  Deposits: %.2f %s\n", report.TotalDeposits, report.Currency))
@@ -409,7 +409,7 @@ func saveReportsToFile(yearlyReports []types.YearlyReport, overallReport *types.
 			file.WriteString(fmt.Sprintf("  Total Gains: %.2f %s\n", report.TotalGains, report.Currency))
 			file.WriteString(fmt.Sprintf("  Percentage Increase: %.2f%%\n\n", report.PercentageIncrease))
 		}
-		
+
 		file.WriteString("Overall Summary:\n")
 		file.WriteString(fmt.Sprintf("  Total Deposits: %.2f %s\n", overallReport.TotalDeposits, overallReport.Currency))
 		file.WriteString(fmt.Sprintf("  Total Transactions: %d\n", overallReport.TotalTransactions))
@@ -480,15 +480,15 @@ func printIncomeReportTable(report *types.IncomeReport) {
 	fmt.Println("\n" + strings.Repeat("=", 80))
 	fmt.Println("                    INCOME REPORT")
 	fmt.Println(strings.Repeat("=", 80))
-	
+
 	// Summary section
 	fmt.Printf("\n📊 SUMMARY (%s)\n", report.Currency)
 	fmt.Println(strings.Repeat("-", 40))
 	fmt.Printf("Total Income:           %10.2f %s\n", report.TotalIncome, report.Currency)
-	fmt.Printf("Date Range:             %s to %s\n", 
-		report.DateRange.From.Format("2006-01-02"), 
+	fmt.Printf("Date Range:             %s to %s\n",
+		report.DateRange.From.Format("2006-01-02"),
 		report.DateRange.To.Format("2006-01-02"))
-	
+
 	// Dividend section
 	fmt.Printf("\n💰 DIVIDENDS (%s)\n", report.Currency)
 	fmt.Println(strings.Repeat("-", 40))
@@ -499,7 +499,7 @@ func printIncomeReportTable(report *types.IncomeReport) {
 	if report.Dividends.AverageYield > 0 {
 		fmt.Printf("Average Yield:          %10.2f%%\n", report.Dividends.AverageYield)
 	}
-	
+
 	// Interest section
 	fmt.Printf("\n🏦 INTEREST (%s)\n", report.Currency)
 	fmt.Println(strings.Repeat("-", 40))
@@ -508,12 +508,12 @@ func printIncomeReportTable(report *types.IncomeReport) {
 	if report.Interest.AverageRate > 0 {
 		fmt.Printf("Average Rate:           %10.2f%%\n", report.Interest.AverageRate)
 	}
-	
+
 	// Top dividend payers
 	if len(report.Dividends.BySecurity) > 0 {
 		fmt.Printf("\n🏆 TOP DIVIDEND PAYERS (%s)\n", report.Currency)
 		fmt.Println(strings.Repeat("-", 40))
-		
+
 		// Convert map to slice for sorting
 		type securityAmount struct {
 			security string
@@ -523,40 +523,40 @@ func printIncomeReportTable(report *types.IncomeReport) {
 		for security, amount := range report.Dividends.BySecurity {
 			securities = append(securities, securityAmount{security, amount})
 		}
-		
+
 		// Sort by amount (descending)
 		sort.Slice(securities, func(i, j int) bool {
 			return securities[i].amount > securities[j].amount
 		})
-		
+
 		// Display top 10
 		limit := 10
 		if len(securities) < limit {
 			limit = len(securities)
 		}
-		
+
 		for i := 0; i < limit; i++ {
 			fmt.Printf("%-20s %10.2f %s\n", securities[i].security, securities[i].amount, report.Currency)
 		}
 	}
-	
+
 	// Interest by source
 	if len(report.Interest.BySource) > 0 {
 		fmt.Printf("\n📈 INTEREST BY SOURCE (%s)\n", report.Currency)
 		fmt.Println(strings.Repeat("-", 40))
-		
+
 		for source, amount := range report.Interest.BySource {
 			fmt.Printf("%-20s %10.2f %s\n", source, amount, report.Currency)
 		}
 	}
-	
+
 	// Monthly breakdown
 	if len(report.Dividends.ByMonth) > 0 || len(report.Interest.ByMonth) > 0 {
 		fmt.Printf("\n📅 MONTHLY BREAKDOWN (%s)\n", report.Currency)
 		fmt.Println(strings.Repeat("-", 50))
 		fmt.Printf("%-10s %12s %12s %12s\n", "Month", "Dividends", "Interest", "Total")
 		fmt.Println(strings.Repeat("-", 50))
-		
+
 		// Combine all months
 		allMonths := make(map[string]bool)
 		for month := range report.Dividends.ByMonth {
@@ -565,14 +565,14 @@ func printIncomeReportTable(report *types.IncomeReport) {
 		for month := range report.Interest.ByMonth {
 			allMonths[month] = true
 		}
-		
+
 		// Convert to slice and sort
 		var months []string
 		for month := range allMonths {
 			months = append(months, month)
 		}
 		sort.Strings(months)
-		
+
 		for _, month := range months {
 			dividends := report.Dividends.ByMonth[month]
 			interest := report.Interest.ByMonth[month]
@@ -580,7 +580,7 @@ func printIncomeReportTable(report *types.IncomeReport) {
 			fmt.Printf("%-10s %12.2f %12.2f %12.2f\n", month, dividends, interest, total)
 		}
 	}
-	
+
 	fmt.Println("\n" + strings.Repeat("=", 80))
 }
 
@@ -599,18 +599,18 @@ func saveIncomeReportToFile(report *types.IncomeReport, filename, format string)
 		// Save as text table
 		file.WriteString("Trading 212 Income Report\n")
 		file.WriteString("=========================\n\n")
-		
+
 		file.WriteString(fmt.Sprintf("Total Income: %.2f %s\n", report.TotalIncome, report.Currency))
-		file.WriteString(fmt.Sprintf("Date Range: %s to %s\n\n", 
-			report.DateRange.From.Format("2006-01-02"), 
+		file.WriteString(fmt.Sprintf("Date Range: %s to %s\n\n",
+			report.DateRange.From.Format("2006-01-02"),
 			report.DateRange.To.Format("2006-01-02")))
-		
+
 		file.WriteString("Dividends:\n")
 		file.WriteString(fmt.Sprintf("  Total: %.2f %s\n", report.Dividends.TotalDividends, report.Currency))
 		file.WriteString(fmt.Sprintf("  Withholding Tax: %.2f %s\n", report.Dividends.TotalWithholdingTax, report.Currency))
 		file.WriteString(fmt.Sprintf("  Net: %.2f %s\n", report.Dividends.NetDividends, report.Currency))
 		file.WriteString(fmt.Sprintf("  Count: %d\n\n", report.Dividends.DividendCount))
-		
+
 		file.WriteString("Interest:\n")
 		file.WriteString(fmt.Sprintf("  Total: %.2f %s\n", report.Interest.TotalInterest, report.Currency))
 		file.WriteString(fmt.Sprintf("  Count: %d\n", report.Interest.InterestCount))
@@ -676,16 +676,16 @@ func printPortfolioReportTable(report *types.PortfolioValuationReport, maxHoldin
 	fmt.Printf("Data Source: %s\n", report.DataSource)
 	fmt.Printf("Generated: %s\n", report.GeneratedAt.Format("2006-01-02 15:04:05"))
 	fmt.Printf("Note: %s\n", report.PriceNote)
-	
+
 	if len(report.YearlyPortfolios) == 0 {
 		fmt.Println("\nNo portfolio data found.")
 		return
 	}
-	
+
 	// Summary across all years
 	fmt.Printf("\n💰 PORTFOLIO SUMMARY (%s)\n", report.Currency)
 	fmt.Println(strings.Repeat("-", 60))
-	
+
 	for _, yearly := range report.YearlyPortfolios {
 		fmt.Printf("\n📅 YEAR %d (as of %s)\n", yearly.Year, yearly.AsOfDate.Format("2006-01-02"))
 		fmt.Println(strings.Repeat("-", 40))
@@ -693,9 +693,9 @@ func printPortfolioReportTable(report *types.PortfolioValuationReport, maxHoldin
 		fmt.Printf("Total Shares:           %10.2f\n", yearly.TotalShares)
 		fmt.Printf("Total Invested:         %10.2f %s\n", yearly.TotalInvested, yearly.Currency)
 		fmt.Printf("Total Market Value:     %10.2f %s\n", yearly.TotalMarketValue, yearly.Currency)
-		fmt.Printf("Unrealized P&L:         %10.2f %s (%.2f%%)\n", 
+		fmt.Printf("Unrealized P&L:         %10.2f %s (%.2f%%)\n",
 			yearly.TotalUnrealizedGainLoss, yearly.Currency, yearly.TotalUnrealizedGainLossPercent)
-		
+
 		// Show yearly activity
 		fmt.Printf("\n💰 %d ACTIVITY\n", yearly.Year)
 		fmt.Println(strings.Repeat("-", 40))
@@ -704,7 +704,7 @@ func printPortfolioReportTable(report *types.PortfolioValuationReport, maxHoldin
 		if yearly.YearlyInterest > 0 {
 			fmt.Printf("Interest:               %10.2f %s\n", yearly.YearlyInterest, yearly.Currency)
 		}
-		
+
 		// Show top holdings for this year
 		if len(yearly.Positions) > 0 {
 			if showAll {
@@ -716,7 +716,7 @@ func printPortfolioReportTable(report *types.PortfolioValuationReport, maxHoldin
 			fmt.Printf("%-8s %-6s %-12s %-12s %-12s %-12s %-8s\n",
 				"Ticker", "Shares", "Avg Cost", "Last Price", "Total Cost", "Market Val", "P&L %")
 			fmt.Println(strings.Repeat("-", 100))
-			
+
 			// Display top N holdings
 			limit := maxHoldings
 			if showAll {
@@ -726,7 +726,7 @@ func printPortfolioReportTable(report *types.PortfolioValuationReport, maxHoldin
 					limit = len(yearly.Positions)
 				}
 			}
-			
+
 			for i := 0; i < limit; i++ {
 				pos := yearly.Positions[i]
 				fmt.Printf("%-8s %6.2f %12.2f %12.2f %12.2f %12.2f %7.1f%%\n",
@@ -738,7 +738,7 @@ func printPortfolioReportTable(report *types.PortfolioValuationReport, maxHoldin
 					pos.MarketValue,
 					pos.UnrealizedGainLossPercent)
 			}
-			
+
 			// Show expand/collapse hint
 			if !showAll && len(yearly.Positions) > maxHoldings {
 				remaining := len(yearly.Positions) - maxHoldings
@@ -750,6 +750,6 @@ func printPortfolioReportTable(report *types.PortfolioValuationReport, maxHoldin
 			}
 		}
 	}
-	
+
 	fmt.Println("\n" + strings.Repeat("=", 80))
 }

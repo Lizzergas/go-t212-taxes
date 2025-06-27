@@ -31,7 +31,7 @@ Deposit,2024-01-01 08:00:00,,,,,3,,,,,1000.00,EUR,1000.00,EUR,0.00,EUR,0.00,EUR,
 			wantErr: true,
 		},
 		{
-			name: "CSV with header only",
+			name:    "CSV with header only",
 			csvData: `Action,Time,ISIN,Ticker,Name,Notes,ID,No. of shares,Price / share,Currency (Price / share),Exchange rate,Result,Currency (Result),Total,Currency (Total),Withholding tax,Currency (Withholding tax),Charge amount,Currency (Charge amount),Deposit fee,Currency (Deposit fee),Currency conversion from amount,Currency (Currency conversion from amount),Currency conversion to amount,Currency (Currency conversion to amount),Currency conversion fee,Currency (Currency conversion fee)`,
 			want:    0,
 			wantErr: false,
@@ -49,14 +49,14 @@ Market buy,2024-01-15 10:30:00`,
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewCSVParser()
 			reader := strings.NewReader(tt.csvData)
-			
+
 			result, err := parser.Parse(reader)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if err == nil && len(result.Transactions) != tt.want {
 				t.Errorf("Parse() got %d transactions, want %d", len(result.Transactions), tt.want)
 			}
@@ -71,8 +71,8 @@ func TestCSVParser_validateHeader(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "valid header",
-			header:  []string{"Action", "Time", "ISIN", "Ticker", "Name", "Other"},
+			name:    "valid header - 22 columns (2022-2023 format)",
+			header:  []string{"Action", "Time", "ISIN", "Ticker", "Name", "No. of shares", "Price / share", "Currency (Price / share)", "Exchange rate", "Total", "Currency (Total)", "Withholding tax", "Currency (Withholding tax)", "Charge amount", "Currency (Charge amount)", "Deposit fee", "Currency (Deposit fee)", "ID", "Currency conversion fee", "Currency (Currency conversion fee)", "Notes", "Extra"},
 			wantErr: false,
 		},
 		{
@@ -91,7 +91,7 @@ func TestCSVParser_validateHeader(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewCSVParser()
 			err := parser.validateHeader(tt.header)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateHeader() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -101,7 +101,7 @@ func TestCSVParser_validateHeader(t *testing.T) {
 
 func TestCSVParser_parseTransaction(t *testing.T) {
 	header := []string{"Action", "Time", "ISIN", "Ticker", "Name", "No. of shares", "Price / share", "Result"}
-	
+
 	tests := []struct {
 		name       string
 		record     []string
@@ -141,12 +141,12 @@ func TestCSVParser_parseTransaction(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewCSVParser()
 			transaction, err := parser.parseTransaction(header, tt.record)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseTransaction() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if err == nil && transaction.Action != tt.wantAction {
 				t.Errorf("parseTransaction() action = %v, want %v", transaction.Action, tt.wantAction)
 			}
@@ -203,7 +203,7 @@ func TestCSVParser_validateYearlyStructure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewCSVParser()
 			err := parser.ValidateYearlyStructure(tt.filenames)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validateYearlyStructure() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -261,12 +261,12 @@ func TestCSVParser_parseOptionalFloat(t *testing.T) {
 			parser := NewCSVParser()
 			var target *float64
 			err := parser.parseOptionalFloat(tt.fieldMap, tt.fieldName, &target)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseOptionalFloat() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			
+
 			if !floatPtrEqual(target, tt.want) {
 				t.Errorf("parseOptionalFloat() target = %v, want %v", target, tt.want)
 			}

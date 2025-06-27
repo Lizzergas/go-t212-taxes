@@ -91,14 +91,14 @@ func (c *TaxCalculator) Calculate(transactions []types.Transaction, options type
 // CalculateCapitalGains calculates capital gains and losses
 func (c *TaxCalculator) CalculateCapitalGains(transactions []types.Transaction, options types.ProcessingOptions) (float64, float64, error) {
 	log.Printf("🚧 Capital Gains Calculator is under development - processing %d transactions", len(transactions))
-	
+
 	return 0.0, 0.0, nil
 }
 
 // CalculateDividends calculates dividend income and withholding tax
 func (c *TaxCalculator) CalculateDividends(transactions []types.Transaction, options types.ProcessingOptions) (float64, float64, error) {
 	log.Printf("🚧 Dividend Calculator is under development - processing %d transactions", len(transactions))
-	
+
 	return 0.0, 0.0, nil
 }
 

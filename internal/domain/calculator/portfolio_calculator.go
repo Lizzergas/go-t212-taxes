@@ -24,14 +24,14 @@ func NewPortfolioCalculator(baseCurrency string) *PortfolioCalculator {
 func (pc *PortfolioCalculator) CalculatePortfolioValuation(transactions []types.Transaction) *types.PortfolioValuationReport {
 	// Get all unique years from transactions
 	years := pc.extractYears(transactions)
-	
+
 	var yearlyPortfolios []types.PortfolioSummary
-	
+
 	for _, year := range years {
 		portfolio := pc.CalculateEndOfYearPortfolio(transactions, year)
 		yearlyPortfolios = append(yearlyPortfolios, *portfolio)
 	}
-	
+
 	return &types.PortfolioValuationReport{
 		YearlyPortfolios: yearlyPortfolios,
 		Currency:         pc.baseCurrency,
@@ -44,18 +44,18 @@ func (pc *PortfolioCalculator) CalculatePortfolioValuation(transactions []types.
 // extractYears gets all unique years from transactions
 func (pc *PortfolioCalculator) extractYears(transactions []types.Transaction) []int {
 	yearMap := make(map[int]bool)
-	
+
 	for _, tx := range transactions {
 		if pc.isTradeTransaction(tx) || tx.Action == types.TransactionTypeDeposit {
 			yearMap[tx.Time.Year()] = true
 		}
 	}
-	
+
 	var years []int
 	for year := range yearMap {
 		years = append(years, year)
 	}
-	
+
 	// Sort years
 	sort.Ints(years)
 	return years
@@ -66,7 +66,7 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 	// Filter transactions up to end of year
 	endOfYear := time.Date(year, 12, 31, 23, 59, 59, 0, time.UTC)
 	var relevantTransactions []types.Transaction
-	
+
 	for _, tx := range transactions {
 		if tx.Time.Before(endOfYear) || tx.Time.Equal(endOfYear) {
 			relevantTransactions = append(relevantTransactions, tx)
@@ -76,10 +76,10 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 	// Build positions map and track last prices
 	positions := make(map[string]*types.PortfolioPosition)
 	lastPrices := make(map[string]*PriceInfo)
-	
+
 	// Track yearly metrics
 	var yearlyDeposits, yearlyDividends, yearlyInterest float64
-	
+
 	for _, tx := range relevantTransactions {
 		// Handle yearly metrics (only for the specific year)
 		if tx.Time.Year() == year {
@@ -93,7 +93,7 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 				var amount float64
 				var currency *string
 				var exchangeRate *float64
-				
+
 				// Get dividend amount - check both Result and Total fields
 				if tx.Result != nil && *tx.Result != 0 {
 					amount = *tx.Result
@@ -104,7 +104,7 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 					currency = tx.CurrencyTotal
 					exchangeRate = tx.ExchangeRate
 				}
-				
+
 				if amount != 0 {
 					convertedAmount := pc.convertToBaseCurrency(amount, currency, exchangeRate)
 					yearlyDividends += convertedAmount
@@ -113,7 +113,7 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 				var amount float64
 				var currency *string
 				var exchangeRate *float64
-				
+
 				// Get interest amount - check both Result and Total fields
 				if tx.Result != nil && *tx.Result != 0 {
 					amount = *tx.Result
@@ -124,7 +124,7 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 					currency = tx.CurrencyTotal
 					exchangeRate = tx.ExchangeRate
 				}
-				
+
 				if amount != 0 {
 					convertedAmount := pc.convertToBaseCurrency(amount, currency, exchangeRate)
 					yearlyInterest += convertedAmount
@@ -136,7 +136,7 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 		if pc.isTradeTransaction(tx) && tx.Ticker != nil && tx.ISIN != nil {
 			ticker := *tx.Ticker
 			position, exists := positions[ticker]
-			
+
 			if !exists {
 				position = &types.PortfolioPosition{
 					Ticker:           ticker,
@@ -156,16 +156,16 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 			} else if pc.isSellTransaction(tx) {
 				pc.handleSellTransaction(position, tx)
 			}
-			
+
 			// Track last price information
 			if tx.PricePerShare != nil && *tx.PricePerShare > 0 {
 				priceInBaseCurrency := pc.convertToBaseCurrency(*tx.PricePerShare, tx.CurrencyPricePerShare, tx.ExchangeRate)
-				
+
 				lastPrices[ticker] = &PriceInfo{
-					Price:    priceInBaseCurrency,
-					Date:     tx.Time,
-					Currency: pc.baseCurrency,
-					OriginalPrice: *tx.PricePerShare,
+					Price:            priceInBaseCurrency,
+					Date:             tx.Time,
+					Currency:         pc.baseCurrency,
+					OriginalPrice:    *tx.PricePerShare,
 					OriginalCurrency: pc.safeString(tx.CurrencyPricePerShare),
 				}
 			}
@@ -175,13 +175,13 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 	// Convert positions map to slice and filter out zero positions
 	var finalPositions []types.PortfolioPosition
 	var totalShares, totalInvested, totalMarketValue float64
-	
+
 	for _, position := range positions {
 		if position.Shares > 0.001 { // Filter out tiny remaining positions
 			if position.Shares > 0 {
 				position.AverageCost = position.TotalCost / position.Shares
 			}
-			
+
 			// Add market pricing information
 			if priceInfo, hasPriceInfo := lastPrices[position.Ticker]; hasPriceInfo {
 				position.LastPrice = priceInfo.Price
@@ -189,7 +189,7 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 				position.LastPriceCurrency = priceInfo.Currency
 				position.MarketValue = position.Shares * priceInfo.Price
 				position.UnrealizedGainLoss = position.MarketValue - position.TotalCost
-				
+
 				if position.TotalCost > 0 {
 					position.UnrealizedGainLossPercent = (position.UnrealizedGainLoss / position.TotalCost) * 100
 				}
@@ -202,7 +202,7 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 				position.UnrealizedGainLoss = 0
 				position.UnrealizedGainLossPercent = 0
 			}
-			
+
 			finalPositions = append(finalPositions, *position)
 			totalShares += position.Shares
 			totalInvested += position.TotalCost
@@ -223,19 +223,19 @@ func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.
 	}
 
 	return &types.PortfolioSummary{
-		Year:            year,
-		AsOfDate:        endOfYear,
-		Positions:       finalPositions,
-		TotalPositions:  len(finalPositions),
-		TotalShares:     totalShares,
-		TotalInvested:   totalInvested,
-		TotalMarketValue: totalMarketValue,
-		TotalUnrealizedGainLoss: totalUnrealizedGainLoss,
+		Year:                           year,
+		AsOfDate:                       endOfYear,
+		Positions:                      finalPositions,
+		TotalPositions:                 len(finalPositions),
+		TotalShares:                    totalShares,
+		TotalInvested:                  totalInvested,
+		TotalMarketValue:               totalMarketValue,
+		TotalUnrealizedGainLoss:        totalUnrealizedGainLoss,
 		TotalUnrealizedGainLossPercent: totalUnrealizedGainLossPercent,
-		Currency:        pc.baseCurrency,
-		YearlyDeposits:  yearlyDeposits,
-		YearlyDividends: yearlyDividends,
-		YearlyInterest:  yearlyInterest,
+		Currency:                       pc.baseCurrency,
+		YearlyDeposits:                 yearlyDeposits,
+		YearlyDividends:                yearlyDividends,
+		YearlyInterest:                 yearlyInterest,
 	}
 }
 
@@ -261,12 +261,12 @@ func (pc *PortfolioCalculator) handleBuyTransaction(position *types.PortfolioPos
 	if tx.Shares != nil && tx.Total != nil {
 		shares := *tx.Shares
 		cost := pc.convertToBaseCurrency(*tx.Total, tx.CurrencyTotal, tx.ExchangeRate)
-		
+
 		// Update position
 		position.Shares += shares
 		position.TotalCost += cost
 		position.TransactionCount++
-		
+
 		// Update dates
 		if position.FirstPurchase.IsZero() || tx.Time.Before(position.FirstPurchase) {
 			position.FirstPurchase = tx.Time
@@ -281,16 +281,16 @@ func (pc *PortfolioCalculator) handleBuyTransaction(position *types.PortfolioPos
 func (pc *PortfolioCalculator) handleSellTransaction(position *types.PortfolioPosition, tx types.Transaction) {
 	if tx.Shares != nil && tx.Total != nil {
 		shares := *tx.Shares
-		
+
 		// Calculate cost basis to remove (FIFO method)
 		if position.Shares > 0 {
 			avgCost := position.TotalCost / position.Shares
 			costToRemove := avgCost * shares
-			
+
 			position.Shares -= shares
 			position.TotalCost -= costToRemove
 			position.TransactionCount++
-			
+
 			// Ensure we don't go negative
 			if position.Shares < 0 {
 				position.Shares = 0
@@ -317,8 +317,8 @@ func (pc *PortfolioCalculator) getSecurityName(tx types.Transaction) string {
 func (pc *PortfolioCalculator) isTradeTransaction(tx types.Transaction) bool {
 	switch tx.Action {
 	case types.TransactionTypeMarketBuy, types.TransactionTypeMarketSell,
-		 types.TransactionTypeLimitBuy, types.TransactionTypeLimitSell,
-		 types.TransactionTypeStopBuy, types.TransactionTypeStopSell:
+		types.TransactionTypeLimitBuy, types.TransactionTypeLimitSell,
+		types.TransactionTypeStopBuy, types.TransactionTypeStopSell:
 		return true
 	default:
 		return false
@@ -350,10 +350,10 @@ func (pc *PortfolioCalculator) convertToBaseCurrency(amount float64, currency *s
 	if currency == nil || *currency == pc.baseCurrency {
 		return amount
 	}
-	
+
 	if exchangeRate != nil && *exchangeRate > 0 {
 		return amount / *exchangeRate
 	}
-	
+
 	return amount // Fallback if no exchange rate
-} 
+}

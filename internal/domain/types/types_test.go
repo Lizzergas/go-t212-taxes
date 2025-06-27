@@ -9,9 +9,9 @@ import (
 
 func TestTransactionTypes(t *testing.T) {
 	tests := []struct {
-		name         string
-		txType       types.TransactionType
-		expectedStr  string
+		name        string
+		txType      types.TransactionType
+		expectedStr string
 	}{
 		{"Market Buy", types.TransactionTypeMarketBuy, "Market buy"},
 		{"Market Sell", types.TransactionTypeMarketSell, "Market sell"},
@@ -29,9 +29,9 @@ func TestTransactionTypes(t *testing.T) {
 
 func TestCurrencyTypes(t *testing.T) {
 	tests := []struct {
-		name         string
-		currency     types.Currency
-		expectedStr  string
+		name        string
+		currency    types.Currency
+		expectedStr string
 	}{
 		{"USD", types.CurrencyUSD, "USD"},
 		{"EUR", types.CurrencyEUR, "EUR"},
@@ -54,17 +54,17 @@ func TestTransaction(t *testing.T) {
 	floatPtr := func(f float64) *float64 { return &f }
 
 	transaction := types.Transaction{
-		Action:                   types.TransactionTypeMarketBuy,
-		Time:                     time.Now(),
-		ISIN:                     stringPtr("US0378331005"),
-		Ticker:                   stringPtr("AAPL"),
-		Name:                     stringPtr("Apple Inc."),
-		Shares:                   floatPtr(10),
-		PricePerShare:            floatPtr(150.0),
-		CurrencyPricePerShare:    stringPtr("USD"),
-		ExchangeRate:             floatPtr(1.0),
-		Result:                   floatPtr(-1500.0),
-		Total:                    floatPtr(-1500.0),
+		Action:                types.TransactionTypeMarketBuy,
+		Time:                  time.Now(),
+		ISIN:                  stringPtr("US0378331005"),
+		Ticker:                stringPtr("AAPL"),
+		Name:                  stringPtr("Apple Inc."),
+		Shares:                floatPtr(10),
+		PricePerShare:         floatPtr(150.0),
+		CurrencyPricePerShare: stringPtr("USD"),
+		ExchangeRate:          floatPtr(1.0),
+		Result:                floatPtr(-1500.0),
+		Total:                 floatPtr(-1500.0),
 	}
 
 	if transaction.Action != types.TransactionTypeMarketBuy {
@@ -82,15 +82,15 @@ func TestTransaction(t *testing.T) {
 
 func TestYearlyReport(t *testing.T) {
 	report := types.YearlyReport{
-		Year:              2024,
-		TotalDeposits:     1000.0,
-		TotalTransactions: 5,
-		CapitalGains:      100.0,
-		Dividends:         25.0,
-		Interest:          5.0,
-		TotalGains:        130.0,
+		Year:               2024,
+		TotalDeposits:      1000.0,
+		TotalTransactions:  5,
+		CapitalGains:       100.0,
+		Dividends:          25.0,
+		Interest:           5.0,
+		TotalGains:         130.0,
 		PercentageIncrease: 13.0,
-		Currency:          "EUR",
+		Currency:           "EUR",
 	}
 
 	if report.Year != 2024 {
@@ -113,16 +113,16 @@ func TestOverallReport(t *testing.T) {
 	}
 
 	overall := types.OverallReport{
-		TotalDeposits:         1000.0,
-		TotalTransactions:     10,
-		TotalCapitalGains:     100.0,
-		TotalDividends:        20.0,
-		TotalInterest:         10.0,
-		TotalGains:            130.0,
-		OverallPercentage:     13.0,
-		Years:                 []int{2023, 2024},
-		YearlyReports:         yearlyReports,
-		Currency:              "EUR",
+		TotalDeposits:     1000.0,
+		TotalTransactions: 10,
+		TotalCapitalGains: 100.0,
+		TotalDividends:    20.0,
+		TotalInterest:     10.0,
+		TotalGains:        130.0,
+		OverallPercentage: 13.0,
+		Years:             []int{2023, 2024},
+		YearlyReports:     yearlyReports,
+		Currency:          "EUR",
 	}
 
 	if overall.TotalDeposits != 1000.0 {

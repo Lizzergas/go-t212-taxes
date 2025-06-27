@@ -162,7 +162,7 @@ func TestRootCmd(t *testing.T) {
 	}
 
 	// Check that subcommands are registered
-	expectedCommands := []string{"process", "analyze", "validate", "income"}
+	expectedCommands := []string{"process", "analyze", "validate", "income", "portfolio"}
 	commands := RootCmd.Commands()
 
 	if len(commands) != len(expectedCommands) {
@@ -192,7 +192,7 @@ func TestProcessCmd(t *testing.T) {
 
 	// Check that required flags are present
 	expectedFlags := []string{"dir", "files", "output", "format"}
-	
+
 	for _, flagName := range expectedFlags {
 		flag := processCmd.Flags().Lookup(flagName)
 		if flag == nil {
@@ -212,7 +212,7 @@ func TestAnalyzeCmd(t *testing.T) {
 
 	// Check that required flags are present
 	expectedFlags := []string{"dir", "files"}
-	
+
 	for _, flagName := range expectedFlags {
 		flag := analyzeCmd.Flags().Lookup(flagName)
 		if flag == nil {
@@ -232,7 +232,7 @@ func TestValidateCmd(t *testing.T) {
 
 	// Check that required flags are present
 	expectedFlags := []string{"dir", "files"}
-	
+
 	for _, flagName := range expectedFlags {
 		flag := validateCmd.Flags().Lookup(flagName)
 		if flag == nil {

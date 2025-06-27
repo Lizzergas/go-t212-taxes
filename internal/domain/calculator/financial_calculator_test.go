@@ -13,37 +13,37 @@ func TestFinancialCalculator_CalculateYearlyReports(t *testing.T) {
 	transactions := []types.Transaction{
 		// 2023 transactions
 		{
-			Action: types.TransactionTypeDeposit,
-			Time:   time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC),
-			Total:  floatPtr(1000.0),
+			Action:        types.TransactionTypeDeposit,
+			Time:          time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC),
+			Total:         floatPtr(1000.0),
 			CurrencyTotal: stringPtr("EUR"),
 		},
 		{
-			Action: types.TransactionTypeMarketBuy,
-			Time:   time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC),
-			Ticker: stringPtr("AAPL"),
-			Shares: floatPtr(10),
-			PricePerShare: floatPtr(150.0),
+			Action:                types.TransactionTypeMarketBuy,
+			Time:                  time.Date(2023, 1, 15, 10, 0, 0, 0, time.UTC),
+			Ticker:                stringPtr("AAPL"),
+			Shares:                floatPtr(10),
+			PricePerShare:         floatPtr(150.0),
 			CurrencyPricePerShare: stringPtr("USD"),
-			ExchangeRate: floatPtr(0.9),
+			ExchangeRate:          floatPtr(0.9),
 		},
 		{
-			Action: types.TransactionTypeDividend,
-			Time:   time.Date(2023, 3, 1, 9, 0, 0, 0, time.UTC),
-			Result: floatPtr(25.0),
+			Action:         types.TransactionTypeDividend,
+			Time:           time.Date(2023, 3, 1, 9, 0, 0, 0, time.UTC),
+			Result:         floatPtr(25.0),
 			CurrencyResult: stringPtr("EUR"),
 		},
 		// 2024 transactions
 		{
-			Action: types.TransactionTypeDeposit,
-			Time:   time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
-			Total:  floatPtr(500.0),
+			Action:        types.TransactionTypeDeposit,
+			Time:          time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
+			Total:         floatPtr(500.0),
 			CurrencyTotal: stringPtr("EUR"),
 		},
 		{
-			Action: types.TransactionTypeInterest,
-			Time:   time.Date(2024, 2, 1, 9, 0, 0, 0, time.UTC),
-			Result: floatPtr(10.0),
+			Action:         types.TransactionTypeInterest,
+			Time:           time.Date(2024, 2, 1, 9, 0, 0, 0, time.UTC),
+			Result:         floatPtr(10.0),
 			CurrencyResult: stringPtr("EUR"),
 		},
 	}
@@ -100,26 +100,26 @@ func TestFinancialCalculator_CalculateOverallReport(t *testing.T) {
 
 	yearlyReports := []types.YearlyReport{
 		{
-			Year:              2023,
-			TotalDeposits:     1000.0,
-			TotalTransactions: 3,
-			CapitalGains:      50.0,
-			Dividends:         25.0,
-			Interest:          0.0,
-			TotalGains:        75.0,
+			Year:               2023,
+			TotalDeposits:      1000.0,
+			TotalTransactions:  3,
+			CapitalGains:       50.0,
+			Dividends:          25.0,
+			Interest:           0.0,
+			TotalGains:         75.0,
 			PercentageIncrease: 7.5,
-			Currency:          "EUR",
+			Currency:           "EUR",
 		},
 		{
-			Year:              2024,
-			TotalDeposits:     500.0,
-			TotalTransactions: 2,
-			CapitalGains:      30.0,
-			Dividends:         15.0,
-			Interest:          10.0,
-			TotalGains:        55.0,
+			Year:               2024,
+			TotalDeposits:      500.0,
+			TotalTransactions:  2,
+			CapitalGains:       30.0,
+			Dividends:          15.0,
+			Interest:           10.0,
+			TotalGains:         55.0,
 			PercentageIncrease: 11.0,
-			Currency:          "EUR",
+			Currency:           "EUR",
 		},
 	}
 
@@ -151,7 +151,7 @@ func TestFinancialCalculator_CalculateOverallReport(t *testing.T) {
 
 	expectedOverallPercentage := (130.0 / 1500.0) * 100
 	tolerance := 0.000001
-	if abs(overall.OverallPercentage - expectedOverallPercentage) > tolerance {
+	if abs(overall.OverallPercentage-expectedOverallPercentage) > tolerance {
 		t.Errorf("OverallReport OverallPercentage = %f, want %f", overall.OverallPercentage, expectedOverallPercentage)
 	}
 
