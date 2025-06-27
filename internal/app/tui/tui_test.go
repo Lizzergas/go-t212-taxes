@@ -11,15 +11,15 @@ func TestNewAppWithAllData(t *testing.T) {
 	// Create test data
 	yearlyReports := []types.YearlyReport{
 		{
-			Year:              2021,
-			TotalDeposits:     1000.0,
-			TotalTransactions: 5,
-			CapitalGains:      100.0,
-			Dividends:         50.0,
-			Interest:          10.0,
-			TotalGains:        160.0,
+			Year:               2021,
+			TotalDeposits:      1000.0,
+			TotalTransactions:  5,
+			CapitalGains:       100.0,
+			Dividends:          50.0,
+			Interest:           10.0,
+			TotalGains:         160.0,
 			PercentageIncrease: 16.0,
-			Currency:          "EUR",
+			Currency:           "EUR",
 		},
 	}
 
@@ -46,15 +46,15 @@ func TestNewAppWithAllData(t *testing.T) {
 	portfolioReport := &types.PortfolioValuationReport{
 		YearlyPortfolios: []types.PortfolioSummary{
 			{
-				Year:              2021,
-				AsOfDate:          time.Date(2021, 12, 31, 23, 59, 59, 0, time.UTC),
-				TotalPositions:    1,
-				TotalShares:       10.0,
-				TotalInvested:     1000.0,
-				TotalMarketValue:  1100.0,
-				TotalUnrealizedGainLoss: 100.0,
+				Year:                           2021,
+				AsOfDate:                       time.Date(2021, 12, 31, 23, 59, 59, 0, time.UTC),
+				TotalPositions:                 1,
+				TotalShares:                    10.0,
+				TotalInvested:                  1000.0,
+				TotalMarketValue:               1100.0,
+				TotalUnrealizedGainLoss:        100.0,
 				TotalUnrealizedGainLossPercent: 10.0,
-				Currency:          "EUR",
+				Currency:                       "EUR",
 			},
 		},
 		Currency:    "EUR",
@@ -144,7 +144,7 @@ func TestTUINavigation(t *testing.T) {
 
 func TestFormatIncomeReport(t *testing.T) {
 	model := NewApp()
-	
+
 	incomeReport := types.IncomeReport{
 		Dividends: types.DividendSummary{
 			TotalDividends:      100.0,
@@ -169,7 +169,7 @@ func TestFormatIncomeReport(t *testing.T) {
 	}
 
 	result := model.formatIncomeReport(incomeReport)
-	
+
 	// Check that the result contains expected elements
 	if result == "" {
 		t.Error("Expected non-empty income report format")
@@ -180,11 +180,11 @@ func TestFormatIncomeReport(t *testing.T) {
 		"Income Report",
 		"2021-01-01",
 		"2021-12-31",
-		"100.00",  // Total dividends
-		"10.00",   // Withholding tax
-		"90.00",   // Net dividends
-		"20.00",   // Interest
-		"110.00",  // Total income
+		"100.00", // Total dividends
+		"10.00",  // Withholding tax
+		"90.00",  // Net dividends
+		"20.00",  // Interest
+		"110.00", // Total income
 	}
 
 	for _, element := range expectedElements {
@@ -196,12 +196,12 @@ func TestFormatIncomeReport(t *testing.T) {
 
 // Helper function to check if a string contains a substring
 func contains(str, substr string) bool {
-	return len(str) >= len(substr) && 
-		   (str == substr || 
-		    len(str) > len(substr) && 
-		    (str[:len(substr)] == substr || 
-		     str[len(str)-len(substr):] == substr ||
-		     containsInMiddle(str, substr)))
+	return len(str) >= len(substr) &&
+		(str == substr ||
+			len(str) > len(substr) &&
+				(str[:len(substr)] == substr ||
+					str[len(str)-len(substr):] == substr ||
+					containsInMiddle(str, substr)))
 }
 
 func containsInMiddle(str, substr string) bool {
@@ -211,4 +211,4 @@ func containsInMiddle(str, substr string) bool {
 		}
 	}
 	return false
-} 
+}

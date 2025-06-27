@@ -1,0 +1,204 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GO_VERSION: '1.21'
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Generate changelog from git commits since last tag
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [ -n "$PREVIOUS_TAG" ]; then
+          echo "## Changes since $PREVIOUS_TAG" > RELEASE_CHANGELOG.md
+          git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD >> RELEASE_CHANGELOG.md
+        else
+          echo "## Initial Release" > RELEASE_CHANGELOG.md
+          echo "First release of T212 Taxes!" >> RELEASE_CHANGELOG.md
+        fi
+        
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        cat RELEASE_CHANGELOG.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: ${{ contains(github.ref, '-') }}
+
+  build-and-upload:
+    name: Build and Upload Assets
+    runs-on: ubuntu-latest
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: ""
+          - goos: linux
+            goarch: arm64
+            suffix: ""
+          - goos: darwin
+            goarch: amd64
+            suffix: ""
+          - goos: darwin
+            goarch: arm64
+            suffix: ""
+          - goos: windows
+            goarch: amd64
+            suffix: ".exe"
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        BINARY_NAME="t212-taxes-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}"
+        VERSION=${GITHUB_REF#refs/tags/}
+        COMMIT=${GITHUB_SHA}
+        DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        
+        go build \
+          -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
+          -o ${BINARY_NAME} \
+          ./cmd/t212-taxes
+
+    - name: Create archive
+      run: |
+        BINARY_NAME="t212-taxes-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}"
+        ARCHIVE_NAME="t212-taxes-${{ matrix.goos }}-${{ matrix.goarch }}"
+        
+        mkdir -p ${ARCHIVE_NAME}
+        cp ${BINARY_NAME} ${ARCHIVE_NAME}/
+        cp README.md ${ARCHIVE_NAME}/
+        cp LICENSE ${ARCHIVE_NAME}/
+        cp CHANGELOG.md ${ARCHIVE_NAME}/
+        cp config.yaml ${ARCHIVE_NAME}/
+        
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          zip -r ${ARCHIVE_NAME}.zip ${ARCHIVE_NAME}/
+          echo "ARCHIVE_FILE=${ARCHIVE_NAME}.zip" >> $GITHUB_ENV
+          echo "CONTENT_TYPE=application/zip" >> $GITHUB_ENV
+        else
+          tar -czf ${ARCHIVE_NAME}.tar.gz ${ARCHIVE_NAME}/
+          echo "ARCHIVE_FILE=${ARCHIVE_NAME}.tar.gz" >> $GITHUB_ENV
+          echo "CONTENT_TYPE=application/gzip" >> $GITHUB_ENV
+        fi
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./${{ env.ARCHIVE_FILE }}
+        asset_name: ${{ env.ARCHIVE_FILE }}
+        asset_content_type: ${{ env.CONTENT_TYPE }}
+
+  update-release-notes:
+    name: Update Release Notes
+    runs-on: ubuntu-latest
+    needs: [create-release, build-and-upload]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Update release with download instructions
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+          const releaseId = ${{ needs.create-release.outputs.release_id }};
+          
+          const downloadInstructions = `
+          
+          ## 📥 Installation
+          
+          ### Download Pre-built Binaries
+          
+          Choose the appropriate binary for your platform:
+          
+          | Platform | Architecture | Download |
+          |----------|--------------|----------|
+          | Linux | x64 | [t212-taxes-linux-amd64.tar.gz](https://github.com/${owner}/${repo}/releases/download/${context.ref.replace('refs/tags/', '')}/t212-taxes-linux-amd64.tar.gz) |
+          | Linux | ARM64 | [t212-taxes-linux-arm64.tar.gz](https://github.com/${owner}/${repo}/releases/download/${context.ref.replace('refs/tags/', '')}/t212-taxes-linux-arm64.tar.gz) |
+          | macOS | Intel | [t212-taxes-darwin-amd64.tar.gz](https://github.com/${owner}/${repo}/releases/download/${context.ref.replace('refs/tags/', '')}/t212-taxes-darwin-amd64.tar.gz) |
+          | macOS | Apple Silicon | [t212-taxes-darwin-arm64.tar.gz](https://github.com/${owner}/${repo}/releases/download/${context.ref.replace('refs/tags/', '')}/t212-taxes-darwin-arm64.tar.gz) |
+          | Windows | x64 | [t212-taxes-windows-amd64.zip](https://github.com/${owner}/${repo}/releases/download/${context.ref.replace('refs/tags/', '')}/t212-taxes-windows-amd64.zip) |
+          
+          ### Quick Install Commands
+          
+          **macOS (Apple Silicon):**
+          \`\`\`bash
+          curl -L https://github.com/${owner}/${repo}/releases/download/${context.ref.replace('refs/tags/', '')}/t212-taxes-darwin-arm64.tar.gz | tar -xz
+          cd t212-taxes-darwin-arm64
+          chmod +x t212-taxes-darwin-arm64
+          ./t212-taxes-darwin-arm64 --help
+          \`\`\`
+          
+          **Linux:**
+          \`\`\`bash
+          curl -L https://github.com/${owner}/${repo}/releases/download/${context.ref.replace('refs/tags/', '')}/t212-taxes-linux-amd64.tar.gz | tar -xz
+          cd t212-taxes-linux-amd64
+          chmod +x t212-taxes-linux-amd64
+          ./t212-taxes-linux-amd64 --help
+          \`\`\`
+          
+          ### Alternative Installation Methods
+          
+          **Go Install:**
+          \`\`\`bash
+          go install github.com/${owner}/${repo}/cmd/t212-taxes@${context.ref.replace('refs/tags/', '')}
+          \`\`\`
+          
+          **Docker:**
+          \`\`\`bash
+          docker run --rm -v $(pwd)/exports:/app/data ghcr.io/${owner}/${repo}:${context.ref.replace('refs/tags/', '')} analyze --dir /app/data
+          \`\`\`
+          `;
+          
+          const { data: release } = await github.rest.repos.getRelease({
+            owner,
+            repo,
+            release_id: releaseId
+          });
+          
+          await github.rest.repos.updateRelease({
+            owner,
+            repo,
+            release_id: releaseId,
+            body: release.body + downloadInstructions
+          }); 

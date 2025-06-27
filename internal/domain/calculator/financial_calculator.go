@@ -31,7 +31,7 @@ func (fc *FinancialCalculator) CalculateYearlyReports(transactions []types.Trans
 
 	// Group transactions by year
 	yearlyTransactions := fc.groupTransactionsByYear(transactions)
-	
+
 	var reports []types.YearlyReport
 	for year, yearTransactions := range yearlyTransactions {
 		report, err := fc.calculateYearlyReport(year, yearTransactions)
@@ -90,12 +90,12 @@ func (fc *FinancialCalculator) CalculateOverallReport(yearlyReports []types.Year
 // groupTransactionsByYear groups transactions by their year
 func (fc *FinancialCalculator) groupTransactionsByYear(transactions []types.Transaction) map[int][]types.Transaction {
 	yearlyTransactions := make(map[int][]types.Transaction)
-	
+
 	for _, transaction := range transactions {
 		year := transaction.Time.Year()
 		yearlyTransactions[year] = append(yearlyTransactions[year], transaction)
 	}
-	
+
 	return yearlyTransactions
 }
 
@@ -167,12 +167,12 @@ func (fc *FinancialCalculator) convertToBaseCurrency(amount float64, currency *s
 	if currency == nil || *currency == fc.baseCurrency {
 		return amount
 	}
-	
+
 	if exchangeRate == nil || *exchangeRate == 0 {
 		// If no exchange rate provided, assume 1:1 (this should be handled better in production)
 		return amount
 	}
-	
+
 	// Convert using exchange rate
 	// Note: Exchange rate semantics may vary, this is a simplified approach
 	return amount / *exchangeRate
@@ -182,21 +182,21 @@ func (fc *FinancialCalculator) convertToBaseCurrency(amount float64, currency *s
 func (fc *FinancialCalculator) CalculateCapitalGains(transactions []types.Transaction) (float64, float64, error) {
 	// Group transactions by security
 	securityTransactions := make(map[string][]types.Transaction)
-	
+
 	for _, transaction := range transactions {
 		if transaction.Ticker == nil {
 			continue
 		}
-		
+
 		ticker := *transaction.Ticker
 		if fc.isTradeTransaction(transaction.Action) {
 			securityTransactions[ticker] = append(securityTransactions[ticker], transaction)
 		}
 	}
-	
+
 	totalGains := 0.0
 	totalLosses := 0.0
-	
+
 	// Calculate gains/losses for each security using FIFO
 	for ticker, secTrans := range securityTransactions {
 		gains, losses, err := fc.calculateSecurityGainsLosses(ticker, secTrans)
@@ -206,7 +206,7 @@ func (fc *FinancialCalculator) CalculateCapitalGains(transactions []types.Transa
 		totalGains += gains
 		totalLosses += losses
 	}
-	
+
 	return totalGains, totalLosses, nil
 }
 
@@ -214,8 +214,8 @@ func (fc *FinancialCalculator) CalculateCapitalGains(transactions []types.Transa
 func (fc *FinancialCalculator) isTradeTransaction(action types.TransactionType) bool {
 	switch action {
 	case types.TransactionTypeMarketBuy, types.TransactionTypeMarketSell,
-		 types.TransactionTypeLimitBuy, types.TransactionTypeLimitSell,
-		 types.TransactionTypeStopBuy, types.TransactionTypeStopSell:
+		types.TransactionTypeLimitBuy, types.TransactionTypeLimitSell,
+		types.TransactionTypeStopBuy, types.TransactionTypeStopSell:
 		return true
 	default:
 		return false
@@ -238,22 +238,22 @@ func (fc *FinancialCalculator) calculateSecurityGainsLosses(ticker string, trans
 	sort.Slice(transactions, func(i, j int) bool {
 		return transactions[i].Time.Before(transactions[j].Time)
 	})
-	
+
 	// FIFO queue for purchases
 	var purchases []PurchaseRecord
 	totalGains := 0.0
 	totalLosses := 0.0
-	
+
 	for _, transaction := range transactions {
 		if fc.isBuyTransaction(transaction.Action) {
 			// Add to purchases queue
 			if transaction.Shares != nil && transaction.PricePerShare != nil {
 				shares := *transaction.Shares
 				pricePerShare := *transaction.PricePerShare
-				
+
 				// Convert to base currency
 				convertedPrice := fc.convertToBaseCurrency(pricePerShare, transaction.CurrencyPricePerShare, transaction.ExchangeRate)
-				
+
 				purchases = append(purchases, PurchaseRecord{
 					Date:          transaction.Time,
 					Shares:        shares,
@@ -266,32 +266,32 @@ func (fc *FinancialCalculator) calculateSecurityGainsLosses(ticker string, trans
 			if transaction.Shares != nil && transaction.PricePerShare != nil {
 				sellShares := *transaction.Shares
 				sellPrice := *transaction.PricePerShare
-				
+
 				// Convert to base currency
 				convertedSellPrice := fc.convertToBaseCurrency(sellPrice, transaction.CurrencyPricePerShare, transaction.ExchangeRate)
-				
+
 				remainingShares := sellShares
-				
+
 				// Process FIFO
 				for i := 0; i < len(purchases) && remainingShares > 0; i++ {
 					purchase := &purchases[i]
 					if purchase.Shares <= 0 {
 						continue
 					}
-					
+
 					sharesToProcess := math.Min(remainingShares, purchase.Shares)
-					
+
 					// Calculate gain/loss
 					costBasis := sharesToProcess * purchase.PricePerShare
 					saleProceeds := sharesToProcess * convertedSellPrice
 					gainLoss := saleProceeds - costBasis
-					
+
 					if gainLoss > 0 {
 						totalGains += gainLoss
 					} else {
 						totalLosses += math.Abs(gainLoss)
 					}
-					
+
 					// Update remaining shares
 					purchase.Shares -= sharesToProcess
 					remainingShares -= sharesToProcess
@@ -299,7 +299,7 @@ func (fc *FinancialCalculator) calculateSecurityGainsLosses(ticker string, trans
 			}
 		}
 	}
-	
+
 	return totalGains, totalLosses, nil
 }
 
@@ -322,9 +322,9 @@ func (fc *FinancialCalculator) CalculatePortfolioReports(files []string) (*types
 
 	// Create portfolio calculator
 	portfolioCalc := NewPortfolioCalculator(fc.baseCurrency)
-	
+
 	// Calculate portfolio valuation
 	report := portfolioCalc.CalculatePortfolioValuation(result.Transactions)
-	
+
 	return report, nil
 }

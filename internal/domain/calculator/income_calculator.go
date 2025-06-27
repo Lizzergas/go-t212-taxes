@@ -183,7 +183,7 @@ func (ic *IncomeCalculator) extractInterestRecords(transactions []types.Transact
 // extractInterestDetails tries to extract additional interest information from notes
 func (ic *IncomeCalculator) extractInterestDetails(record *types.InterestRecord, notes string) {
 	notes = strings.ToLower(notes)
-	
+
 	// Try to identify source
 	if strings.Contains(notes, "cash") {
 		record.Source = "Cash"
@@ -214,10 +214,10 @@ func (ic *IncomeCalculator) extractInterestDetails(record *types.InterestRecord,
 // calculateDividendSummary calculates comprehensive dividend statistics
 func (ic *IncomeCalculator) calculateDividendSummary(records []types.DividendRecord) types.DividendSummary {
 	summary := types.DividendSummary{
-		Currency:     ic.baseCurrency,
-		BySecurity:   make(map[string]float64),
-		ByYear:       make(map[int]float64),
-		ByMonth:      make(map[string]float64),
+		Currency:   ic.baseCurrency,
+		BySecurity: make(map[string]float64),
+		ByYear:     make(map[int]float64),
+		ByMonth:    make(map[string]float64),
 	}
 
 	if len(records) == 0 {
@@ -345,7 +345,7 @@ func (ic *IncomeCalculator) calculateDateRange(transactions []types.Transaction)
 // GetTopDividendPayers returns the top dividend-paying securities
 func (ic *IncomeCalculator) GetTopDividendPayers(records []types.DividendRecord, limit int) []DividendPayer {
 	securityMap := make(map[string]float64)
-	
+
 	for _, record := range records {
 		securityKey := record.Ticker
 		if securityKey == "" {
@@ -424,12 +424,12 @@ func (ic *IncomeCalculator) CalculateDividendYield(dividendAmount, sharePrice, s
 	if sharePrice <= 0 || shares <= 0 {
 		return 0
 	}
-	
+
 	totalValue := sharePrice * shares
 	if totalValue <= 0 {
 		return 0
 	}
-	
+
 	return (dividendAmount / totalValue) * 100
 }
 
@@ -438,8 +438,8 @@ func (ic *IncomeCalculator) CalculateEffectiveInterestRate(interestAmount, princ
 	if principal <= 0 || days <= 0 {
 		return 0
 	}
-	
+
 	// Calculate annualized rate
 	annualizedInterest := (interestAmount / float64(days)) * 365
 	return (annualizedInterest / principal) * 100
-} 
+}

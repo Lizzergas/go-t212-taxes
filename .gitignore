@@ -1,6 +1,49 @@
-.claude
-exports
-demo.cast
-demo.gif
+# Build artifacts
 t212-taxes
+t212-taxes.exe
+dist/
+
+# Test coverage
+coverage.out
+coverage.html
+coverage.xml
+
+# Private/sensitive data
+.claude/
+exports/
+
+# Demo files (remove these lines if you want to include demo files)
+demo.cast
+# demo.gif - Include this file for README demo
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Go specific
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Configuration overrides (keep base config.yaml)
+config.local.yaml
+config.override.yaml
+
+# Local development
+.env
+.env.local
 

@@ -135,11 +135,11 @@ func TestIncomeCalculator_ExtractDividendRecords(t *testing.T) {
 			WithholdingTax: floatPtr(3.75),
 		},
 		{
-			Action:         types.TransactionTypeMarketBuy, // Non-dividend transaction
-			Time:           time.Date(2024, 1, 16, 10, 0, 0, 0, time.UTC),
-			Ticker:         stringPtr("AAPL"),
-			Shares:         floatPtr(10),
-			PricePerShare:  floatPtr(150.0),
+			Action:                types.TransactionTypeMarketBuy, // Non-dividend transaction
+			Time:                  time.Date(2024, 1, 16, 10, 0, 0, 0, time.UTC),
+			Ticker:                stringPtr("AAPL"),
+			Shares:                floatPtr(10),
+			PricePerShare:         floatPtr(150.0),
 			CurrencyPricePerShare: stringPtr("USD"),
 		},
 		{
@@ -197,11 +197,11 @@ func TestIncomeCalculator_ExtractInterestRecords(t *testing.T) {
 			Notes:          stringPtr("Monthly interest on cash balance"),
 		},
 		{
-			Action:         types.TransactionTypeMarketBuy, // Non-interest transaction
-			Time:           time.Date(2024, 2, 1, 10, 0, 0, 0, time.UTC),
-			Ticker:         stringPtr("AAPL"),
-			Shares:         floatPtr(10),
-			PricePerShare:  floatPtr(150.0),
+			Action:        types.TransactionTypeMarketBuy, // Non-interest transaction
+			Time:          time.Date(2024, 2, 1, 10, 0, 0, 0, time.UTC),
+			Ticker:        stringPtr("AAPL"),
+			Shares:        floatPtr(10),
+			PricePerShare: floatPtr(150.0),
 		},
 		{
 			Action:         types.TransactionTypeInterest,
@@ -393,22 +393,22 @@ func TestIncomeCalculator_CalculateInterestSummary(t *testing.T) {
 
 	records := []types.InterestRecord{
 		{
-			Date:     time.Date(2024, 1, 31, 9, 0, 0, 0, time.UTC),
-			Amount:   10.0,
-			Source:   "Cash",
-			Period:   "Monthly",
+			Date:   time.Date(2024, 1, 31, 9, 0, 0, 0, time.UTC),
+			Amount: 10.0,
+			Source: "Cash",
+			Period: "Monthly",
 		},
 		{
-			Date:     time.Date(2024, 2, 29, 9, 0, 0, 0, time.UTC),
-			Amount:   12.0,
-			Source:   "Margin",
-			Period:   "Monthly",
+			Date:   time.Date(2024, 2, 29, 9, 0, 0, 0, time.UTC),
+			Amount: 12.0,
+			Source: "Margin",
+			Period: "Monthly",
 		},
 		{
-			Date:     time.Date(2024, 3, 31, 9, 0, 0, 0, time.UTC),
-			Amount:   8.0,
-			Source:   "Cash",
-			Period:   "Monthly",
+			Date:   time.Date(2024, 3, 31, 9, 0, 0, 0, time.UTC),
+			Amount: 8.0,
+			Source: "Cash",
+			Period: "Monthly",
 		},
 	}
 
@@ -456,19 +456,19 @@ func TestIncomeCalculator_GetTopDividendPayers(t *testing.T) {
 
 	records := []types.DividendRecord{
 		{
-			Ticker:   "AAPL",
+			Ticker:    "AAPL",
 			NetAmount: 25.0,
 		},
 		{
-			Ticker:   "MSFT",
+			Ticker:    "MSFT",
 			NetAmount: 30.0,
 		},
 		{
-			Ticker:   "AAPL",
+			Ticker:    "AAPL",
 			NetAmount: 15.0,
 		},
 		{
-			Ticker:   "GOOGL",
+			Ticker:    "GOOGL",
 			NetAmount: 20.0,
 		},
 	}
@@ -494,12 +494,12 @@ func TestIncomeCalculator_GetMonthlyIncomeBreakdown(t *testing.T) {
 
 	dividendRecords := []types.DividendRecord{
 		{
-			Date:       time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC),
-			NetAmount:  25.0,
+			Date:      time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC),
+			NetAmount: 25.0,
 		},
 		{
-			Date:       time.Date(2024, 2, 15, 10, 0, 0, 0, time.UTC),
-			NetAmount:  30.0,
+			Date:      time.Date(2024, 2, 15, 10, 0, 0, 0, time.UTC),
+			NetAmount: 30.0,
 		},
 	}
 
@@ -655,15 +655,15 @@ func TestIncomeCalculator_CurrencyConversion(t *testing.T) {
 			Ticker:         stringPtr("AAPL"),
 			Result:         floatPtr(100.0), // USD
 			CurrencyResult: stringPtr("USD"),
-			ExchangeRate:   floatPtr(0.9),   // 1 USD = 0.9 EUR
-			WithholdingTax: floatPtr(15.0),  // USD
+			ExchangeRate:   floatPtr(0.9),  // 1 USD = 0.9 EUR
+			WithholdingTax: floatPtr(15.0), // USD
 		},
 		{
 			Action:         types.TransactionTypeInterest,
 			Time:           time.Date(2024, 1, 31, 9, 0, 0, 0, time.UTC),
-			Result:         floatPtr(50.0),  // USD
+			Result:         floatPtr(50.0), // USD
 			CurrencyResult: stringPtr("USD"),
-			ExchangeRate:   floatPtr(0.9),   // 1 USD = 0.9 EUR
+			ExchangeRate:   floatPtr(0.9), // 1 USD = 0.9 EUR
 		},
 	}
 
@@ -689,4 +689,4 @@ func TestIncomeCalculator_CurrencyConversion(t *testing.T) {
 	if report.Interest.TotalInterest != expectedInterest {
 		t.Errorf("Interest.TotalInterest = %f, want %f", report.Interest.TotalInterest, expectedInterest)
 	}
-} 
+}

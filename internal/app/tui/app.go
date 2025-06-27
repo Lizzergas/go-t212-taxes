@@ -52,21 +52,21 @@ var (
 
 // Model represents the TUI application state
 type Model struct {
-	YearlyReports       []types.YearlyReport
-	OverallReport       *types.OverallReport
-	AllTransactions     []types.Transaction              // Added for portfolio calculation
-	PortfolioReport     *types.PortfolioValuationReport  // New: Full portfolio valuation data
-	IncomeReport        *types.IncomeReport              // New: Income/dividend data
-	CurrentView         string                           // "yearly", "overall", "portfolio", "income", "help"
-	SelectedYear        int                              // Track which year's portfolio we're viewing
-	CurrentPortfolio    *types.PortfolioSummary          // Current portfolio data
-	PortfolioExpanded   bool                             // Track if portfolio positions are expanded
-	PortfolioCursor     int                              // Current selected position in portfolio
-	PortfolioScroll     int                              // Current scroll offset in portfolio
-	GridCursor          GridCursor
-	GridLayout          GridLayout
-	Width               int
-	Height              int
+	YearlyReports     []types.YearlyReport
+	OverallReport     *types.OverallReport
+	AllTransactions   []types.Transaction             // Added for portfolio calculation
+	PortfolioReport   *types.PortfolioValuationReport // New: Full portfolio valuation data
+	IncomeReport      *types.IncomeReport             // New: Income/dividend data
+	CurrentView       string                          // "yearly", "overall", "portfolio", "income", "help"
+	SelectedYear      int                             // Track which year's portfolio we're viewing
+	CurrentPortfolio  *types.PortfolioSummary         // Current portfolio data
+	PortfolioExpanded bool                            // Track if portfolio positions are expanded
+	PortfolioCursor   int                             // Current selected position in portfolio
+	PortfolioScroll   int                             // Current scroll offset in portfolio
+	GridCursor        GridCursor
+	GridLayout        GridLayout
+	Width             int
+	Height            int
 }
 
 // GridCursor represents the current position in the grid
@@ -77,11 +77,11 @@ type GridCursor struct {
 
 // GridLayout holds grid configuration
 type GridLayout struct {
-	Columns     int
-	Rows        int
-	TotalItems  int
-	ItemWidth   int
-	ItemHeight  int
+	Columns    int
+	Rows       int
+	TotalItems int
+	ItemWidth  int
+	ItemHeight int
 }
 
 // NewApp creates a new TUI application
@@ -254,7 +254,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if selectedIndex < len(m.YearlyReports) {
 					selectedYear := m.YearlyReports[selectedIndex].Year
 					m.SelectedYear = selectedYear
-					
+
 					// Calculate portfolio for the selected year
 					portfolioCalc := calculator.NewPortfolioCalculator("EUR") // TODO: Make currency configurable
 					m.CurrentPortfolio = portfolioCalc.CalculateEndOfYearPortfolio(m.AllTransactions, selectedYear)
@@ -356,7 +356,7 @@ func (m Model) renderYearlyView() string {
 
 		for col := 0; col < m.GridLayout.Columns; col++ {
 			index := row*m.GridLayout.Columns + col
-			
+
 			// Check if this position has a valid item
 			if index >= len(m.YearlyReports) {
 				// Add empty space for positioning
@@ -369,10 +369,10 @@ func (m Model) renderYearlyView() string {
 			}
 
 			report := m.YearlyReports[index]
-			
+
 			// Determine if this item is selected
 			isSelected := (row == m.GridCursor.Row && col == m.GridCursor.Col)
-			
+
 			// Create the year card
 			yearCard := m.createYearCard(report, isSelected)
 			rowItems = append(rowItems, yearCard)
@@ -385,12 +385,12 @@ func (m Model) renderYearlyView() string {
 
 	// Join all rows vertically
 	gridContent := lipgloss.JoinVertical(lipgloss.Left, gridRows...)
-	
+
 	// Add grid navigation info
 	selectedIndex := m.getSelectedIndex()
 	navInfo := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#626262")).
-		Render(fmt.Sprintf("Grid: %d×%d | Selected: %d/%d | ↑↓←→ navigate • Enter: select", 
+		Render(fmt.Sprintf("Grid: %d×%d | Selected: %d/%d | ↑↓←→ navigate • Enter: select",
 			m.GridLayout.Rows, m.GridLayout.Columns, selectedIndex+1, len(m.YearlyReports)))
 
 	return lipgloss.JoinVertical(lipgloss.Left, gridContent, "", navInfo)
@@ -409,7 +409,7 @@ func (m Model) createYearCard(report types.YearlyReport, isSelected bool) string
 
 	// Create labeled content with compact formatting
 	var content strings.Builder
-	
+
 	// Header with year
 	content.WriteString(headerStyle.Render(fmt.Sprintf("📅 %d", report.Year)))
 	content.WriteString("\n")
@@ -417,13 +417,13 @@ func (m Model) createYearCard(report types.YearlyReport, isSelected bool) string
 	// Key metrics with clear labels
 	content.WriteString(fmt.Sprintf("💰 Deposits: %s\n",
 		currencyStyle.Render(formatCurrency(report.TotalDeposits, report.Currency))))
-	
+
 	content.WriteString(fmt.Sprintf("📈 Gains: %s\n",
 		currencyStyle.Render(formatCurrency(report.CapitalGains, report.Currency))))
-	
+
 	content.WriteString(fmt.Sprintf("💎 Dividends: %s\n",
 		currencyStyle.Render(formatCurrency(report.Dividends, report.Currency))))
-	
+
 	if report.Interest > 0 {
 		content.WriteString(fmt.Sprintf("🏦 Interest: %s\n",
 			currencyStyle.Render(formatCurrency(report.Interest, report.Currency))))
@@ -475,9 +475,9 @@ func (m Model) renderPortfolioView() string {
 		currencyStyle.Render(formatCurrency(portfolio.TotalInvested, portfolio.Currency))))
 	content.WriteString(fmt.Sprintf("📈 Market Value: %s\n",
 		currencyStyle.Render(formatCurrency(portfolio.TotalMarketValue, portfolio.Currency))))
-	
+
 	// Unrealized gains/losses with color coding
-	gainLossText := fmt.Sprintf("%.2f %s (%.2f%%)", 
+	gainLossText := fmt.Sprintf("%.2f %s (%.2f%%)",
 		portfolio.TotalUnrealizedGainLoss, portfolio.Currency, portfolio.TotalUnrealizedGainLossPercent)
 	var gainLossStyled string
 	if portfolio.TotalUnrealizedGainLoss > 0 {
@@ -512,7 +512,7 @@ func (m Model) renderPortfolioView() string {
 			content.WriteString(headerStyle.Render(fmt.Sprintf("🎯 Top Holdings - Position %d/%d", m.PortfolioCursor+1, visiblePositions)))
 		}
 		content.WriteString("\n")
-		
+
 		// Table header with market data
 		content.WriteString(fmt.Sprintf("%-8s %8s %10s %12s %12s %10s %8s\n",
 			"Ticker", "Shares", "Last Price", "Total Cost", "Market Val", "P&L", "P&L %"))
@@ -524,17 +524,17 @@ func (m Model) renderPortfolioView() string {
 		if !m.PortfolioExpanded && maxPositions > 10 {
 			maxPositions = 10
 		}
-		
+
 		// Calculate available height for positions (terminal height minus headers/footers)
 		availableHeight := m.Height - 20 // Reserve space for headers, summary, and navigation
 		if availableHeight < 5 {
 			availableHeight = 5
 		}
-		
+
 		// Calculate visible range
 		startIdx := m.PortfolioScroll
 		endIdx := min(startIdx+availableHeight, maxPositions)
-		
+
 		// Show scroll indicator if needed
 		if maxPositions > availableHeight {
 			content.WriteString(fmt.Sprintf("▲ Scroll: %d-%d of %d positions ▲\n", startIdx+1, endIdx, maxPositions))
@@ -543,7 +543,7 @@ func (m Model) renderPortfolioView() string {
 		// Render visible positions with cursor highlighting
 		for i := startIdx; i < endIdx; i++ {
 			pos := portfolio.Positions[i]
-			
+
 			// Format P&L with proper sign and alignment
 			plText := ""
 			if pos.UnrealizedGainLoss > 0 {
@@ -553,7 +553,7 @@ func (m Model) renderPortfolioView() string {
 			} else {
 				plText = "0"
 			}
-			
+
 			// Format P&L percentage with proper sign
 			plPercentText := ""
 			if pos.UnrealizedGainLossPercent > 0 {
@@ -563,7 +563,7 @@ func (m Model) renderPortfolioView() string {
 			} else {
 				plPercentText = "0.0%"
 			}
-			
+
 			// Format the position row with proper right-alignment for numbers
 			positionRow := fmt.Sprintf("%-8s %8.1f %10.2f %12.2f %12.2f %10s %8s",
 				pos.Ticker,
@@ -573,7 +573,7 @@ func (m Model) renderPortfolioView() string {
 				pos.MarketValue,
 				plText,
 				plPercentText)
-			
+
 			// Highlight selected position
 			if i == m.PortfolioCursor {
 				// Create highlighted style for selected position
@@ -581,7 +581,7 @@ func (m Model) renderPortfolioView() string {
 					Foreground(lipgloss.Color("#000000")).
 					Background(lipgloss.Color("#FF69B4")).
 					Bold(true)
-				
+
 				// Render the highlighted row with fixed width to maintain alignment
 				content.WriteString(selectedStyle.Render(positionRow))
 				content.WriteString(" ← Selected")
@@ -590,13 +590,13 @@ func (m Model) renderPortfolioView() string {
 			}
 			content.WriteString("\n")
 		}
-		
+
 		// Show scroll indicator at bottom if needed
 		if maxPositions > availableHeight && endIdx < maxPositions {
 			remaining := maxPositions - endIdx
 			content.WriteString(fmt.Sprintf("▼ ... and %d more positions below ▼\n", remaining))
 		}
-		
+
 		// Show expand/collapse information
 		if !m.PortfolioExpanded && len(portfolio.Positions) > 10 {
 			remaining := len(portfolio.Positions) - 10
@@ -620,7 +620,7 @@ func (m Model) renderPortfolioView() string {
 	} else {
 		navHelp = "b: back • i: income • o: overall • h: help • q: quit"
 	}
-	
+
 	navHelpStyled := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#626262")).
 		Render(navHelp)
@@ -729,24 +729,24 @@ func (m Model) formatYearlyReport(report types.YearlyReport) string {
 	// Metrics
 	content.WriteString(fmt.Sprintf("💰 Deposits: %s\n",
 		currencyStyle.Render(formatCurrency(report.TotalDeposits, report.Currency))))
-	
+
 	content.WriteString(fmt.Sprintf("💳 Transactions: %s\n",
 		valueStyle.Render(fmt.Sprintf("%d", report.TotalTransactions))))
-	
+
 	content.WriteString(fmt.Sprintf("📈 Capital Gains: %s\n",
 		currencyStyle.Render(formatCurrency(report.CapitalGains, report.Currency))))
-	
+
 	content.WriteString(fmt.Sprintf("💎 Dividends: %s\n",
 		currencyStyle.Render(formatCurrency(report.Dividends, report.Currency))))
-	
+
 	if report.Interest > 0 {
 		content.WriteString(fmt.Sprintf("🏦 Interest: %s\n",
 			currencyStyle.Render(formatCurrency(report.Interest, report.Currency))))
 	}
-	
+
 	content.WriteString(fmt.Sprintf("🎯 Total Gains: %s\n",
 		currencyStyle.Render(formatCurrency(report.TotalGains, report.Currency))))
-	
+
 	// Percentage with color coding
 	percentageText := fmt.Sprintf("%.2f%%", report.PercentageIncrease)
 	var percentageStyled string
@@ -757,7 +757,7 @@ func (m Model) formatYearlyReport(report types.YearlyReport) string {
 	} else {
 		percentageStyled = valueStyle.Render(percentageText)
 	}
-	
+
 	content.WriteString(fmt.Sprintf("📊 Money Increase: %s", percentageStyled))
 
 	return content.String()
@@ -785,21 +785,21 @@ func (m Model) formatOverallReport(report types.OverallReport) string {
 	// Overall metrics
 	content.WriteString(fmt.Sprintf("💰 Total Deposits: %s\n",
 		currencyStyle.Render(formatCurrency(report.TotalDeposits, report.Currency))))
-	
+
 	content.WriteString(fmt.Sprintf("💳 Total Transactions: %s\n",
 		valueStyle.Render(fmt.Sprintf("%d", report.TotalTransactions))))
-	
+
 	content.WriteString(fmt.Sprintf("📈 Total Capital Gains: %s\n",
 		currencyStyle.Render(formatCurrency(report.TotalCapitalGains, report.Currency))))
-	
+
 	content.WriteString(fmt.Sprintf("💎 Total Dividends: %s\n",
 		currencyStyle.Render(formatCurrency(report.TotalDividends, report.Currency))))
-	
+
 	if report.TotalInterest > 0 {
 		content.WriteString(fmt.Sprintf("🏦 Total Interest: %s\n",
 			currencyStyle.Render(formatCurrency(report.TotalInterest, report.Currency))))
 	}
-	
+
 	content.WriteString(fmt.Sprintf("🎯 Total Gains: %s\n",
 		currencyStyle.Render(formatCurrency(report.TotalGains, report.Currency))))
 
@@ -815,7 +815,7 @@ func (m Model) formatOverallReport(report types.OverallReport) string {
 	} else {
 		percentageStyled = valueStyle.Render(percentageText)
 	}
-	
+
 	content.WriteString(fmt.Sprintf("📊 Overall Performance: %s", percentageStyled))
 
 	// Investment efficiency
@@ -823,11 +823,11 @@ func (m Model) formatOverallReport(report types.OverallReport) string {
 		content.WriteString("\n\n")
 		content.WriteString(headerStyle.Render("📊 Investment Efficiency"))
 		content.WriteString("\n")
-		
+
 		avgPerYear := report.OverallPercentage / float64(len(report.Years))
 		content.WriteString(fmt.Sprintf("📈 Average Annual Return: %s\n",
 			valueStyle.Render(fmt.Sprintf("%.2f%%", avgPerYear))))
-		
+
 		if len(report.Years) > 1 {
 			totalValue := report.TotalDeposits + report.TotalGains
 			content.WriteString(fmt.Sprintf("💼 Total Invested + Realized Gains: %s\n",
@@ -892,7 +892,7 @@ func (m Model) formatIncomeReport(report types.IncomeReport) string {
 // formatCurrency formats currency values for display
 func formatCurrency(amount float64, currency string) string {
 	symbol := getCurrencySymbol(currency)
-	
+
 	if amount >= 0 {
 		return fmt.Sprintf("%s%.2f", symbol, amount)
 	} else {
@@ -969,19 +969,19 @@ func (m *Model) updateGridLayout() {
 
 	// Calculate optimal grid dimensions
 	totalItems := len(m.YearlyReports)
-	
+
 	// Base item dimensions (minimum required space for a year card)
-	minItemWidth := 35   // Minimum width for year card
-	minItemHeight := 14  // Minimum height for year card (increased for labels)
-	
+	minItemWidth := 35  // Minimum width for year card
+	minItemHeight := 14 // Minimum height for year card (increased for labels)
+
 	// Calculate available space (accounting for borders, padding, and navigation help)
 	availableWidth := m.Width - 4   // Account for margins
 	availableHeight := m.Height - 8 // Account for title, help text, margins
-	
+
 	// Calculate optimal number of columns
 	maxCols := max(1, availableWidth/minItemWidth)
 	optimalCols := min(maxCols, totalItems)
-	
+
 	// Try different column counts to find the best fit
 	bestCols := 1
 	for cols := 1; cols <= optimalCols; cols++ {
@@ -990,32 +990,32 @@ func (m *Model) updateGridLayout() {
 			bestCols = cols
 		}
 	}
-	
+
 	// Calculate final layout
 	columns := bestCols
 	rows := (totalItems + columns - 1) / columns
 	itemWidth := min(availableWidth/columns, 45) // Max width to prevent overly wide cards
 	itemHeight := minItemHeight
-	
+
 	m.GridLayout = GridLayout{
-		Columns:     columns,
-		Rows:        rows,
-		TotalItems:  totalItems,
-		ItemWidth:   itemWidth,
-		ItemHeight:  itemHeight,
+		Columns:    columns,
+		Rows:       rows,
+		TotalItems: totalItems,
+		ItemWidth:  itemWidth,
+		ItemHeight: itemHeight,
 	}
-	
+
 	// Ensure cursor is within bounds
 	maxRow := rows - 1
 	maxCol := columns - 1
-	
+
 	if m.GridCursor.Row > maxRow {
 		m.GridCursor.Row = maxRow
 	}
 	if m.GridCursor.Col > maxCol {
 		m.GridCursor.Col = maxCol
 	}
-	
+
 	// Ensure cursor points to a valid item
 	if m.getSelectedIndex() >= totalItems {
 		// Move to last valid position
@@ -1061,14 +1061,14 @@ func (m *Model) adjustPortfolioScroll() {
 	if availableHeight < 5 {
 		availableHeight = 5 // Minimum viewable area
 	}
-	
+
 	// Adjust scroll to keep cursor visible
 	if m.PortfolioCursor < m.PortfolioScroll {
 		m.PortfolioScroll = m.PortfolioCursor
 	} else if m.PortfolioCursor >= m.PortfolioScroll+availableHeight {
 		m.PortfolioScroll = m.PortfolioCursor - availableHeight + 1
 	}
-	
+
 	// Ensure scroll doesn't go negative
 	if m.PortfolioScroll < 0 {
 		m.PortfolioScroll = 0
@@ -1088,7 +1088,7 @@ func (m *Model) openBrowser(ticker string) tea.Cmd {
 		default: // linux and others
 			cmd = exec.Command("xdg-open", url)
 		}
-		
+
 		err := cmd.Run()
 		if err != nil {
 			// Return an error message if the browser fails to open

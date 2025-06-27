@@ -9,7 +9,7 @@ import (
 
 func TestPortfolioCalculator_CalculatePortfolioValuation(t *testing.T) {
 	calculator := NewPortfolioCalculator("EUR")
-	
+
 	msftISIN := "US5949181045"
 	msftTicker := "MSFT"
 	msftName := "Microsoft"
@@ -20,31 +20,31 @@ func TestPortfolioCalculator_CalculatePortfolioValuation(t *testing.T) {
 	total1000 := 1000.0
 	total600 := 600.0
 	eurCurrency := "EUR"
-	
+
 	transactions := []types.Transaction{
 		{
-			Action:            types.TransactionTypeMarketBuy,
-			Time:              time.Date(2021, 10, 15, 10, 0, 0, 0, time.UTC),
-			ISIN:              &msftISIN,
-			Ticker:            &msftTicker,
-			Name:              &msftName,
-			Shares:            &shares10,
-			PricePerShare:     &price100,
+			Action:                types.TransactionTypeMarketBuy,
+			Time:                  time.Date(2021, 10, 15, 10, 0, 0, 0, time.UTC),
+			ISIN:                  &msftISIN,
+			Ticker:                &msftTicker,
+			Name:                  &msftName,
+			Shares:                &shares10,
+			PricePerShare:         &price100,
 			CurrencyPricePerShare: &eurCurrency,
-			Total:             &total1000,
-			CurrencyTotal:     &eurCurrency,
+			Total:                 &total1000,
+			CurrencyTotal:         &eurCurrency,
 		},
 		{
-			Action:            types.TransactionTypeMarketBuy,
-			Time:              time.Date(2021, 12, 15, 10, 0, 0, 0, time.UTC),
-			ISIN:              &msftISIN,
-			Ticker:            &msftTicker,
-			Name:              &msftName,
-			Shares:            &shares5,
-			PricePerShare:     &price120,
+			Action:                types.TransactionTypeMarketBuy,
+			Time:                  time.Date(2021, 12, 15, 10, 0, 0, 0, time.UTC),
+			ISIN:                  &msftISIN,
+			Ticker:                &msftTicker,
+			Name:                  &msftName,
+			Shares:                &shares5,
+			PricePerShare:         &price120,
 			CurrencyPricePerShare: &eurCurrency,
-			Total:             &total600,
-			CurrencyTotal:     &eurCurrency,
+			Total:                 &total600,
+			CurrencyTotal:         &eurCurrency,
 		},
 	}
 
@@ -84,12 +84,12 @@ func TestPortfolioCalculator_CalculatePortfolioValuation(t *testing.T) {
 		if position.LastPrice != 120.0 {
 			t.Errorf("Expected last price 120.0, got %.2f", position.LastPrice)
 		}
-		
+
 		// Should have 15 shares total
 		if position.Shares != 15.0 {
 			t.Errorf("Expected 15 shares, got %.2f", position.Shares)
 		}
-		
+
 		// Market value should be calculated
 		expectedMarketValue := 15.0 * 120.0 // 1800
 		if position.MarketValue != expectedMarketValue {
@@ -100,9 +100,9 @@ func TestPortfolioCalculator_CalculatePortfolioValuation(t *testing.T) {
 
 func TestPortfolioCalculator_ExtractYears(t *testing.T) {
 	calculator := NewPortfolioCalculator("EUR")
-	
+
 	msftTicker := "MSFT"
-	
+
 	transactions := []types.Transaction{
 		{
 			Action: types.TransactionTypeMarketBuy,
@@ -132,7 +132,7 @@ func TestPortfolioCalculator_ExtractYears(t *testing.T) {
 
 func TestPortfolioCalculator_EmptyTransactions(t *testing.T) {
 	calculator := NewPortfolioCalculator("EUR")
-	
+
 	report := calculator.CalculatePortfolioValuation([]types.Transaction{})
 
 	if report == nil {
@@ -142,4 +142,4 @@ func TestPortfolioCalculator_EmptyTransactions(t *testing.T) {
 	if len(report.YearlyPortfolios) != 0 {
 		t.Errorf("Expected no yearly portfolios for empty transactions, got %d", len(report.YearlyPortfolios))
 	}
-} 
+}
