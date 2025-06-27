@@ -127,30 +127,29 @@ dockers:
     extra_files:
       - config.yaml
 
-# Homebrew cask - using main repository (recommended over brews for pre-compiled binaries)
-homebrew_casks:
-  - name: t212-taxes
-    repository:
-      owner: Lizzergas
-      name: go-t212-taxes  # Use main repository
-      branch: main
-      token: "{{ .Env.GITHUB_TOKEN }}"  # Use standard GitHub token
-    url_template: "https://github.com/Lizzergas/go-t212-taxes/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    commit_msg_template: "Homebrew cask update for {{ .ProjectName }} version {{ .Tag }}"
-    directory: Casks  # Will create Casks/ directory in your repo
-    homepage: "https://github.com/Lizzergas/go-t212-taxes"
-    description: "A comprehensive tool for processing Trading 212 CSV exports and calculating tax obligations"
-    skip_upload: auto
-    # For unsigned binaries, we need to disable quarantine
-    hooks:
-      post:
-        install: |
-          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/t212-taxes"]
-          end
+# Homebrew cask - DISABLED for now (can be enabled later once basic release works)
+# homebrew_casks:
+#   - name: t212-taxes
+#     repository:
+#       owner: Lizzergas
+#       name: go-t212-taxes  # Use main repository
+#       branch: main
+#       token: "{{ .Env.GITHUB_TOKEN }}"  # Use standard GitHub token
+#     commit_author:
+#       name: goreleaserbot
+#       email: bot@goreleaser.com
+#     commit_msg_template: "Homebrew cask update for {{ .ProjectName }} version {{ .Tag }}"
+#     directory: Casks  # Will create Casks/ directory in your repo
+#     homepage: "https://github.com/Lizzergas/go-t212-taxes"
+#     description: "A comprehensive tool for processing Trading 212 CSV exports and calculating tax obligations"
+#     skip_upload: auto
+#     # For unsigned binaries, we need to disable quarantine
+#     hooks:
+#       post:
+#         install: |
+#           if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+#             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/t212-taxes"]
+#           end
 
 # Snapcraft (Ubuntu Store) - DISABLED for now (requires snapcraft in CI)
 # snapcrafts:
