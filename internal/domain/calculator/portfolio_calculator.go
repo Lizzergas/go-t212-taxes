@@ -220,7 +220,7 @@ func (pc *PortfolioCalculator) buildFinalPositions(
 	positions map[string]*types.PortfolioPosition,
 	lastPrices map[string]*PriceInfo,
 ) ([]types.PortfolioPosition, *PositionTotals) {
-	var finalPositions []types.PortfolioPosition
+	finalPositions := make([]types.PortfolioPosition, 0, len(positions))
 	totals := &PositionTotals{}
 
 	for _, position := range positions {

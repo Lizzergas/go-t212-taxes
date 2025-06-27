@@ -55,7 +55,7 @@ type Transaction struct {
 	DepositFee                           *float64        `csv:"Deposit fee" json:"deposit_fee,omitempty"`
 	CurrencyDepositFee                   *string         `csv:"Currency (Deposit fee)" json:"currency_deposit_fee,omitempty"`
 	CurrencyConversionFromAmount         *float64        `csv:"Currency conversion from amount" json:"currency_conversion_from_amount,omitempty"`
-	CurrencyCurrencyConversionFromAmount *string         `csv:"Currency (Currency conversion from amount)" json:"currency_currency_conversion_from_amount,omitempty"`
+	CurrencyCurrencyConversionFromAmount *string `csv:"Currency (Currency conversion from amount)" json:"currency_currency_conversion_from_amount,omitempty"`
 	CurrencyConversionToAmount           *float64        `csv:"Currency conversion to amount" json:"currency_conversion_to_amount,omitempty"`
 	CurrencyCurrencyConversionToAmount   *string         `csv:"Currency (Currency conversion to amount)" json:"currency_currency_conversion_to_amount,omitempty"`
 	CurrencyConversionFee                *float64        `csv:"Currency conversion fee" json:"currency_conversion_fee,omitempty"`

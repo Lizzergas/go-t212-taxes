@@ -266,7 +266,19 @@ go test -bench=. ./...
 make test
 make lint
 make security-scan
+
+# Quick quality gate check (mirrors CI)
+./scripts/lint-check.sh
 ```
+
+#### Quality Gate
+This project uses a quality gate system in CI/CD:
+- **Threshold**: Maximum 15 linting issues allowed
+- **Current Status**: 0 issues (perfect code quality! 🎉)
+- **Pull Requests**: Automatically commented with quality reports
+- **Local Check**: Use `./scripts/lint-check.sh` to verify before pushing
+
+The CI won't fail for linting issues within the threshold, but exceeding it indicates code quality concerns that should be addressed.
 
 ### Testing Strategy
 - **Unit Tests**: Test individual functions and methods

@@ -202,133 +202,199 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "y":
-			m.CurrentView = ViewYearly
-		case "o":
-			m.CurrentView = ViewOverall
-		case "i":
-			if m.IncomeReport != nil {
-				m.CurrentView = ViewIncome
-			}
-		case "p":
-			// Show portfolio valuation if available
-			if m.PortfolioReport != nil && len(m.PortfolioReport.YearlyPortfolios) > 0 {
-				// Default to latest year if no year selected
-				if m.SelectedYear == 0 && len(m.YearlyReports) > 0 {
-					m.SelectedYear = m.YearlyReports[len(m.YearlyReports)-1].Year
-				}
-				// Find the portfolio for the selected year
-				for _, portfolio := range m.PortfolioReport.YearlyPortfolios {
-					if portfolio.Year == m.SelectedYear {
-						m.CurrentPortfolio = &portfolio
-						break
-					}
-				}
-				m.CurrentView = ViewPortfolio
-			}
-		case "h", "?":
-			m.CurrentView = ViewHelp
-		case "up", "k":
-			if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
-				newRow := m.GridCursor.Row - 1
-				if m.isValidPosition(newRow, m.GridCursor.Col) {
-					m.GridCursor.Row = newRow
-				}
-			} else if m.CurrentView == ViewPortfolio && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
-				// Portfolio navigation - move cursor up
-				if m.PortfolioCursor > 0 {
-					m.PortfolioCursor--
-					m.adjustPortfolioScroll()
-				}
-			}
-		case "down", "j":
-			if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
-				newRow := m.GridCursor.Row + 1
-				if m.isValidPosition(newRow, m.GridCursor.Col) {
-					m.GridCursor.Row = newRow
-				}
-			} else if m.CurrentView == ViewPortfolio && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
-				// Portfolio navigation - move cursor down
-				maxCursor := len(m.CurrentPortfolio.Positions) - 1
-				if !m.PortfolioExpanded && maxCursor > 9 {
-					maxCursor = 9 // Limit to top 10 when collapsed
-				}
-				if m.PortfolioCursor < maxCursor {
-					m.PortfolioCursor++
-					m.adjustPortfolioScroll()
-				}
-			}
-		case "left":
-			if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
-				newCol := m.GridCursor.Col - 1
-				if m.isValidPosition(m.GridCursor.Row, newCol) {
-					m.GridCursor.Col = newCol
-				}
-			}
-		case "right", "l":
-			if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
-				newCol := m.GridCursor.Col + 1
-				if m.isValidPosition(m.GridCursor.Row, newCol) {
-					m.GridCursor.Col = newCol
-				}
-			}
-		case "enter", " ":
-			if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 && len(m.AllTransactions) > 0 {
-				// Navigate to portfolio view for selected year
-				selectedIndex := m.getSelectedIndex()
-				if selectedIndex < len(m.YearlyReports) {
-					selectedYear := m.YearlyReports[selectedIndex].Year
-					m.SelectedYear = selectedYear
+		return m.handleKeyMsg(msg)
+	case tea.WindowSizeMsg:
+		return m.handleWindowResize(msg), nil
+	}
+	return m, nil
+}
 
-					// Calculate portfolio for the selected year
-					portfolioCalc := calculator.NewPortfolioCalculator("EUR") // TODO: Make currency configurable
-					m.CurrentPortfolio = portfolioCalc.CalculateEndOfYearPortfolio(m.AllTransactions, selectedYear)
-					m.CurrentView = ViewPortfolio
-					// Reset portfolio navigation
-					m.PortfolioCursor = 0
-					m.PortfolioScroll = 0
-				}
-			} else if m.CurrentView == ViewPortfolio && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
-				// Open browser with Yahoo Finance quote for selected stock
-				maxPositions := len(m.CurrentPortfolio.Positions)
-				if !m.PortfolioExpanded && maxPositions > 10 {
-					maxPositions = 10
-				}
-				if m.PortfolioCursor < maxPositions {
-					ticker := m.CurrentPortfolio.Positions[m.PortfolioCursor].Ticker
-					cmd := m.openBrowser(ticker)
-					return m, cmd
-				}
-			}
-		case "b":
-			if m.CurrentView == ViewPortfolio {
-				// Go back to yearly view
-				m.CurrentView = ViewYearly
-				m.CurrentPortfolio = nil
-				// Reset portfolio navigation state
-				m.PortfolioCursor = 0
-				m.PortfolioScroll = 0
-			}
-		case "e", "x":
-			if m.CurrentView == ViewPortfolio {
-				// Toggle expand/collapse portfolio positions
-				m.PortfolioExpanded = !m.PortfolioExpanded
-				// Reset cursor and scroll when toggling
-				m.PortfolioCursor = 0
-				m.PortfolioScroll = 0
+// handleKeyMsg handles keyboard input messages
+func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "y":
+		m.CurrentView = ViewYearly
+	case "o":
+		m.CurrentView = ViewOverall
+	case "i":
+		if m.IncomeReport != nil {
+			m.CurrentView = ViewIncome
+		}
+	case "p":
+		return m.handlePortfolioViewRequest(), nil
+	case "h", "?":
+		m.CurrentView = ViewHelp
+	case "up", "k":
+		return m.handleUpKey(), nil
+	case "down", "j":
+		return m.handleDownKey(), nil
+	case "left":
+		return m.handleLeftKey(), nil
+	case "right", "l":
+		return m.handleRightKey(), nil
+	case "enter", " ":
+		return m.handleEnterKey()
+	case "b":
+		return m.handleBackKey(), nil
+	case "e", "x":
+		return m.handleExpandKey(), nil
+	}
+	return m, nil
+}
+
+// handlePortfolioViewRequest handles the 'p' key press to show portfolio view
+func (m Model) handlePortfolioViewRequest() Model {
+	if m.PortfolioReport != nil && len(m.PortfolioReport.YearlyPortfolios) > 0 {
+		// Default to latest year if no year selected
+		if m.SelectedYear == 0 && len(m.YearlyReports) > 0 {
+			m.SelectedYear = m.YearlyReports[len(m.YearlyReports)-1].Year
+		}
+		// Find the portfolio for the selected year
+		for _, portfolio := range m.PortfolioReport.YearlyPortfolios {
+			if portfolio.Year == m.SelectedYear {
+				m.CurrentPortfolio = &portfolio
+				break
 			}
 		}
-	case tea.WindowSizeMsg:
-		m.Width = msg.Width
-		m.Height = msg.Height
-		// Recalculate grid layout when window is resized
-		m.updateGridLayout()
+		m.CurrentView = ViewPortfolio
 	}
+	return m
+}
 
+// handleUpKey handles the up arrow key navigation
+func (m Model) handleUpKey() Model {
+	if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
+		newRow := m.GridCursor.Row - 1
+		if m.isValidPosition(newRow, m.GridCursor.Col) {
+			m.GridCursor.Row = newRow
+		}
+	} else if m.CurrentView == ViewPortfolio && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
+		if m.PortfolioCursor > 0 {
+			m.PortfolioCursor--
+			m.adjustPortfolioScroll()
+		}
+	}
+	return m
+}
+
+// handleDownKey handles the down arrow key navigation
+func (m Model) handleDownKey() Model {
+	if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
+		newRow := m.GridCursor.Row + 1
+		if m.isValidPosition(newRow, m.GridCursor.Col) {
+			m.GridCursor.Row = newRow
+		}
+	} else if m.CurrentView == ViewPortfolio && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
+		maxCursor := len(m.CurrentPortfolio.Positions) - 1
+		if !m.PortfolioExpanded && maxCursor > 9 {
+			maxCursor = 9 // Limit to top 10 when collapsed
+		}
+		if m.PortfolioCursor < maxCursor {
+			m.PortfolioCursor++
+			m.adjustPortfolioScroll()
+		}
+	}
+	return m
+}
+
+// handleLeftKey handles the left arrow key navigation
+func (m Model) handleLeftKey() Model {
+	if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
+		newCol := m.GridCursor.Col - 1
+		if m.isValidPosition(m.GridCursor.Row, newCol) {
+			m.GridCursor.Col = newCol
+		}
+	}
+	return m
+}
+
+// handleRightKey handles the right arrow key navigation
+func (m Model) handleRightKey() Model {
+	if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 {
+		newCol := m.GridCursor.Col + 1
+		if m.isValidPosition(m.GridCursor.Row, newCol) {
+			m.GridCursor.Col = newCol
+		}
+	}
+	return m
+}
+
+// handleEnterKey handles the enter key for selecting items
+func (m Model) handleEnterKey() (Model, tea.Cmd) {
+	if m.CurrentView == ViewYearly && len(m.YearlyReports) > 0 && len(m.AllTransactions) > 0 {
+		return m.handleYearlySelection(), nil
+	} else if m.CurrentView == ViewPortfolio && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
+		return m.handlePortfolioSelection()
+	}
 	return m, nil
+}
+
+// handleYearlySelection handles selection in yearly view
+func (m Model) handleYearlySelection() Model {
+	selectedIndex := m.getSelectedIndex()
+	if selectedIndex < len(m.YearlyReports) {
+		selectedYear := m.YearlyReports[selectedIndex].Year
+		m.SelectedYear = selectedYear
+
+		// Calculate portfolio for the selected year
+		portfolioCalc := calculator.NewPortfolioCalculator("EUR") // TODO: Make currency configurable
+		m.CurrentPortfolio = portfolioCalc.CalculateEndOfYearPortfolio(m.AllTransactions, selectedYear)
+		m.CurrentView = ViewPortfolio
+		// Reset portfolio navigation
+		m.PortfolioCursor = 0
+		m.PortfolioScroll = 0
+	}
+	return m
+}
+
+// handlePortfolioSelection handles selection in portfolio view (opens browser)
+func (m Model) handlePortfolioSelection() (Model, tea.Cmd) {
+	maxPositions := len(m.CurrentPortfolio.Positions)
+	if !m.PortfolioExpanded && maxPositions > 10 {
+		maxPositions = 10
+	}
+	if m.PortfolioCursor < maxPositions {
+		ticker := m.CurrentPortfolio.Positions[m.PortfolioCursor].Ticker
+		cmd := m.openBrowser(ticker)
+		return m, cmd
+	}
+	return m, nil
+}
+
+// handleBackKey handles the 'b' key for going back
+func (m Model) handleBackKey() Model {
+	if m.CurrentView == ViewPortfolio {
+		// Go back to yearly view
+		m.CurrentView = ViewYearly
+		m.CurrentPortfolio = nil
+		// Reset portfolio navigation state
+		m.PortfolioCursor = 0
+		m.PortfolioScroll = 0
+	}
+	return m
+}
+
+// handleExpandKey handles the 'e'/'x' key for expanding/collapsing portfolio
+func (m Model) handleExpandKey() Model {
+	if m.CurrentView == ViewPortfolio {
+		// Toggle expand/collapse portfolio positions
+		m.PortfolioExpanded = !m.PortfolioExpanded
+		// Reset cursor and scroll when toggling
+		m.PortfolioCursor = 0
+		m.PortfolioScroll = 0
+	}
+	return m
+}
+
+// handleWindowResize handles window resize events
+func (m Model) handleWindowResize(msg tea.WindowSizeMsg) Model {
+	m.Width = msg.Width
+	m.Height = msg.Height
+	// Recalculate grid layout when window is resized
+	m.updateGridLayout()
+	return m
 }
 
 // View implements the bubbletea.Model interface

@@ -365,10 +365,7 @@ func TestFinancialCalculator_calculateSecurityGainsLosses(t *testing.T) {
 		},
 	}
 
-	gains, losses, err := calc.calculateSecurityGainsLosses(transactions)
-	if err != nil {
-		t.Fatalf("calculateSecurityGainsLosses() error = %v", err)
-	}
+	gains, losses := calc.calculateSecurityGainsLosses(transactions)
 
 	// Bought: 10 shares at 100, 10 shares at 110
 	// Sold: 10 shares at 120 using FIFO (first 10 shares bought at 100)

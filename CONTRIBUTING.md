@@ -90,6 +90,9 @@ go build -o t212-taxes ./cmd/t212-taxes
 
 # Run with sample data
 ./t212-taxes analyze --dir ./data/sample
+
+# Quick quality gate check (mirrors CI)
+./scripts/lint-check.sh
 ```
 
 ### Project Structure
@@ -418,3 +421,17 @@ Contributors are recognized in:
 - **Code Reviews**: Learning opportunity and mentorship
 
 Thank you for contributing to T212 Taxes! 🙏 
+
+### Quality Gate System
+
+This project uses a quality gate system to maintain code quality:
+
+- **Threshold**: Maximum 15 linting issues allowed
+- **Automated PR Checks**: Every pull request gets automatic quality reports
+- **CI Behavior**: CI won't fail for issues within threshold but will report them
+- **Local Verification**: Use `./scripts/lint-check.sh` before pushing
+
+**Before submitting a PR**:
+1. Run `./scripts/lint-check.sh` to verify quality gate compliance
+2. Fix critical issues if the gate fails (>15 issues)
+3. Consider fixing remaining issues for better code quality

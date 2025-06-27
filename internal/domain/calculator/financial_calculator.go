@@ -39,10 +39,7 @@ func (fc *FinancialCalculator) CalculateYearlyReports(transactions []types.Trans
 
 	reports := make([]types.YearlyReport, 0, len(yearlyTransactions))
 	for year, yearTransactions := range yearlyTransactions {
-		report, err := fc.calculateYearlyReport(year, yearTransactions)
-		if err != nil {
-			return nil, fmt.Errorf("failed to calculate report for year %d: %w", year, err)
-		}
+		report := fc.calculateYearlyReport(year, yearTransactions)
 		reports = append(reports, *report)
 	}
 
@@ -105,7 +102,7 @@ func (fc *FinancialCalculator) groupTransactionsByYear(transactions []types.Tran
 }
 
 // calculateYearlyReport calculates financial metrics for a specific year
-func (fc *FinancialCalculator) calculateYearlyReport(year int, transactions []types.Transaction) (*types.YearlyReport, error) {
+func (fc *FinancialCalculator) calculateYearlyReport(year int, transactions []types.Transaction) *types.YearlyReport {
 	report := &types.YearlyReport{
 		Year:              year,
 		TotalTransactions: len(transactions),
@@ -163,7 +160,7 @@ func (fc *FinancialCalculator) calculateYearlyReport(year int, transactions []ty
 		report.PercentageIncrease = (report.TotalGains / report.TotalDeposits) * PercentMultiplier
 	}
 
-	return report, nil
+	return report
 }
 
 // convertToBaseCurrency converts an amount to the base currency
@@ -202,11 +199,8 @@ func (fc *FinancialCalculator) CalculateCapitalGains(transactions []types.Transa
 	totalLosses := 0.0
 
 	// Calculate gains/losses for each security using FIFO
-	for ticker, secTrans := range securityTransactions {
-		gains, losses, err := fc.calculateSecurityGainsLosses(secTrans)
-		if err != nil {
-			return 0, 0, fmt.Errorf("failed to calculate gains/losses for %s: %w", ticker, err)
-		}
+	for _, secTrans := range securityTransactions {
+		gains, losses := fc.calculateSecurityGainsLosses(secTrans)
 		totalGains += gains
 		totalLosses += losses
 	}
@@ -237,7 +231,7 @@ func (fc *FinancialCalculator) isBuyTransaction(action types.TransactionType) bo
 }
 
 // calculateSecurityGainsLosses calculates gains/losses for a specific security using FIFO
-func (fc *FinancialCalculator) calculateSecurityGainsLosses(transactions []types.Transaction) (float64, float64, error) {
+func (fc *FinancialCalculator) calculateSecurityGainsLosses(transactions []types.Transaction) (float64, float64) {
 	// Sort transactions by time
 	sort.Slice(transactions, func(i, j int) bool {
 		return transactions[i].Time.Before(transactions[j].Time)
@@ -250,61 +244,77 @@ func (fc *FinancialCalculator) calculateSecurityGainsLosses(transactions []types
 
 	for _, transaction := range transactions {
 		if fc.isBuyTransaction(transaction.Action) {
-			// Add to purchases queue
-			if transaction.Shares != nil && transaction.PricePerShare != nil {
-				shares := *transaction.Shares
-				pricePerShare := *transaction.PricePerShare
-
-				// Convert to base currency
-				convertedPrice := fc.convertToBaseCurrency(pricePerShare, transaction.CurrencyPricePerShare, transaction.ExchangeRate)
-
-				purchases = append(purchases, PurchaseRecord{
-					Date:          transaction.Time,
-					Shares:        shares,
-					PricePerShare: convertedPrice,
-					TotalCost:     shares * convertedPrice,
-				})
-			}
+			fc.processBuyTransaction(&purchases, transaction)
 		} else {
-			// Sell transaction - calculate gains/losses using FIFO
-			if transaction.Shares != nil && transaction.PricePerShare != nil {
-				sellShares := *transaction.Shares
-				sellPrice := *transaction.PricePerShare
-
-				// Convert to base currency
-				convertedSellPrice := fc.convertToBaseCurrency(sellPrice, transaction.CurrencyPricePerShare, transaction.ExchangeRate)
-
-				remainingShares := sellShares
-
-				// Process FIFO
-				for i := 0; i < len(purchases) && remainingShares > 0; i++ {
-					purchase := &purchases[i]
-					if purchase.Shares <= 0 {
-						continue
-					}
-
-					sharesToProcess := math.Min(remainingShares, purchase.Shares)
-
-					// Calculate gain/loss
-					costBasis := sharesToProcess * purchase.PricePerShare
-					saleProceeds := sharesToProcess * convertedSellPrice
-					gainLoss := saleProceeds - costBasis
-
-					if gainLoss > 0 {
-						totalGains += gainLoss
-					} else {
-						totalLosses += math.Abs(gainLoss)
-					}
-
-					// Update remaining shares
-					purchase.Shares -= sharesToProcess
-					remainingShares -= sharesToProcess
-				}
-			}
+			gains, losses := fc.processSellTransaction(&purchases, transaction)
+			totalGains += gains
+			totalLosses += losses
 		}
 	}
 
-	return totalGains, totalLosses, nil
+	return totalGains, totalLosses
+}
+
+// processBuyTransaction adds a buy transaction to the purchases queue
+func (fc *FinancialCalculator) processBuyTransaction(purchases *[]PurchaseRecord, transaction types.Transaction) {
+	if transaction.Shares != nil && transaction.PricePerShare != nil {
+		shares := *transaction.Shares
+		pricePerShare := *transaction.PricePerShare
+
+		// Convert to base currency
+		convertedPrice := fc.convertToBaseCurrency(pricePerShare, transaction.CurrencyPricePerShare, transaction.ExchangeRate)
+
+		*purchases = append(*purchases, PurchaseRecord{
+			Date:          transaction.Time,
+			Shares:        shares,
+			PricePerShare: convertedPrice,
+			TotalCost:     shares * convertedPrice,
+		})
+	}
+}
+
+// processSellTransaction processes a sell transaction using FIFO and returns gains/losses
+func (fc *FinancialCalculator) processSellTransaction(purchases *[]PurchaseRecord, transaction types.Transaction) (float64, float64) {
+	if transaction.Shares == nil || transaction.PricePerShare == nil {
+		return 0, 0
+	}
+
+	sellShares := *transaction.Shares
+	sellPrice := *transaction.PricePerShare
+
+	// Convert to base currency
+	convertedSellPrice := fc.convertToBaseCurrency(sellPrice, transaction.CurrencyPricePerShare, transaction.ExchangeRate)
+
+	remainingShares := sellShares
+	totalGains := 0.0
+	totalLosses := 0.0
+
+	// Process FIFO
+	for i := 0; i < len(*purchases) && remainingShares > 0; i++ {
+		purchase := &(*purchases)[i]
+		if purchase.Shares <= 0 {
+			continue
+		}
+
+		sharesToProcess := math.Min(remainingShares, purchase.Shares)
+
+		// Calculate gain/loss
+		costBasis := sharesToProcess * purchase.PricePerShare
+		saleProceeds := sharesToProcess * convertedSellPrice
+		gainLoss := saleProceeds - costBasis
+
+		if gainLoss > 0 {
+			totalGains += gainLoss
+		} else {
+			totalLosses += math.Abs(gainLoss)
+		}
+
+		// Update remaining shares
+		purchase.Shares -= sharesToProcess
+		remainingShares -= sharesToProcess
+	}
+
+	return totalGains, totalLosses
 }
 
 // PurchaseRecord represents a purchase for FIFO calculation

@@ -61,7 +61,12 @@ func (ic *IncomeCalculator) CalculateIncomeReport(transactions []types.Transacti
 
 // extractDividendRecords extracts and processes dividend transactions
 func (ic *IncomeCalculator) extractDividendRecords(transactions []types.Transaction) []types.DividendRecord {
-	var records []types.DividendRecord
+	// Pre-allocate slice with estimated capacity (assume ~10% of transactions are dividends)
+	estimatedCapacity := len(transactions) / 10
+	if estimatedCapacity < 1 {
+		estimatedCapacity = 1
+	}
+	records := make([]types.DividendRecord, 0, estimatedCapacity)
 
 	for _, tx := range transactions {
 		// Check if transaction is a dividend (handle different formats)
@@ -132,7 +137,13 @@ func (ic *IncomeCalculator) extractDividendRecords(transactions []types.Transact
 
 // extractInterestRecords extracts and processes interest transactions
 func (ic *IncomeCalculator) extractInterestRecords(transactions []types.Transaction) []types.InterestRecord {
-	var records []types.InterestRecord
+	// Pre-allocate slice with estimated capacity (assume ~5% of transactions are interest)
+	const interestTransactionRatio = 20 // Assumes 1 in 20 transactions are interest payments
+	estimatedCapacity := len(transactions) / interestTransactionRatio
+	if estimatedCapacity < 1 {
+		estimatedCapacity = 1
+	}
+	records := make([]types.InterestRecord, 0, estimatedCapacity)
 
 	for _, tx := range transactions {
 		// Check if transaction is an interest (handle different formats)
@@ -365,7 +376,7 @@ func (ic *IncomeCalculator) GetTopDividendPayers(records []types.DividendRecord,
 	}
 
 	// Convert to slice for sorting
-	var payers []DividendPayer
+	payers := make([]DividendPayer, 0, len(securityMap))
 	for security, amount := range securityMap {
 		payers = append(payers, DividendPayer{
 			Security: security,
