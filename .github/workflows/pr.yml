@@ -46,7 +46,7 @@ jobs:
         echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
         
         # Install gosec for security scanning
-        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        go install github.com/securego/gosec/v2/cmd/gosec@latest
 
     - name: Make test script executable
       run: chmod +x scripts/test-all.sh

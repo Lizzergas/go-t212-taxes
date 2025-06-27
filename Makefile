@@ -184,7 +184,7 @@ release-check: clean check build-all ## Prepare for release (run all checks and 
 dev-setup: deps ## Set up development environment
 	@echo '$(YELLOW)Setting up development environment...$(NC)'
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	@go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+	@go install github.com/securego/gosec/v2/cmd/gosec@latest
 	@echo '$(GREEN)Development environment ready!$(NC)'
 
 .PHONY: version
