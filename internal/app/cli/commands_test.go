@@ -97,59 +97,7 @@ func TestGetCSVFiles(t *testing.T) {
 	}
 }
 
-func TestFormatCurrency(t *testing.T) {
-	tests := []struct {
-		name     string
-		amount   float64
-		currency string
-		want     string
-	}{
-		{
-			name:     "positive EUR amount",
-			amount:   123.45,
-			currency: "EUR",
-			want:     "€123.45",
-		},
-		{
-			name:     "negative EUR amount",
-			amount:   -123.45,
-			currency: "EUR",
-			want:     "-€123.45",
-		},
-		{
-			name:     "zero amount",
-			amount:   0.0,
-			currency: "EUR",
-			want:     "€0.00",
-		},
-		{
-			name:     "USD amount",
-			amount:   100.0,
-			currency: "USD",
-			want:     "$100.00",
-		},
-		{
-			name:     "GBP amount",
-			amount:   50.75,
-			currency: "GBP",
-			want:     "£50.75",
-		},
-		{
-			name:     "unknown currency",
-			amount:   200.0,
-			currency: "XYZ",
-			want:     "XYZ 200.00",
-		},
-	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// We need to test this through the TUI package since formatCurrency is not exported
-			// This is a limitation of the current design
-			t.Skip("formatCurrency is not exported - would need refactoring to test")
-		})
-	}
-}
 
 func TestRootCmd(t *testing.T) {
 	// Test that the root command can be created without errors

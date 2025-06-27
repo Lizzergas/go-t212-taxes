@@ -212,3 +212,64 @@ func containsInMiddle(str, substr string) bool {
 	}
 	return false
 }
+
+func TestFormatCurrency(t *testing.T) {
+	tests := []struct {
+		name     string
+		amount   float64
+		currency string
+		want     string
+	}{
+		{
+			name:     "positive EUR amount",
+			amount:   123.45,
+			currency: "EUR",
+			want:     "€123.45",
+		},
+		{
+			name:     "negative EUR amount",
+			amount:   -123.45,
+			currency: "EUR",
+			want:     "-€123.45",
+		},
+		{
+			name:     "zero amount",
+			amount:   0.0,
+			currency: "EUR",
+			want:     "€0.00",
+		},
+		{
+			name:     "USD amount",
+			amount:   100.0,
+			currency: "USD",
+			want:     "$100.00",
+		},
+		{
+			name:     "GBP amount",
+			amount:   50.75,
+			currency: "GBP",
+			want:     "£50.75",
+		},
+		{
+			name:     "BGN amount",
+			amount:   150.25,
+			currency: "BGN",
+			want:     "лв150.25",
+		},
+		{
+			name:     "unknown currency",
+			amount:   200.0,
+			currency: "XYZ",
+			want:     "XYZ 200.00",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatCurrency(tt.amount, tt.currency)
+			if got != tt.want {
+				t.Errorf("formatCurrency(%v, %s) = %s, want %s", tt.amount, tt.currency, got, tt.want)
+			}
+		})
+	}
+}
