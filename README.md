@@ -69,8 +69,8 @@ curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/t212
 ### Homebrew (Recommended)
 
 ```bash
-brew tap Lizzergas/go-t212-taxes
-brew install t212-taxes
+brew tap Lizzergas/t212-taxes https://github.com/Lizzergas/go-t212-taxes
+brew install --cask t212-taxes
 ```
 
 ### Scoop (Windows)

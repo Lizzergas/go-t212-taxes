@@ -122,7 +122,8 @@ Once a tag is pushed, GitHub Actions automatically:
 - ✅ Pushes to GitHub Container Registry (ghcr.io)
 - ✅ Tags with version and latest
 
-#### Documentation Phase (2-5 minutes)
+#### Package Distribution Phase (5-10 minutes)
+- ✅ Updates Homebrew formula in repository
 - ✅ Generates changelog from git commits
 - ✅ Updates release with installation instructions
 - ✅ Adds download links and verification info
@@ -147,14 +148,15 @@ Once a tag is pushed, GitHub Actions automatically:
 - Semantic import versioning
 - Module proxy cached
 
-#### Future Channels
-
-**Homebrew** 🔄 Prepared (needs setup)
+**Homebrew** ✅ Automatic
 ```bash
-# When ready, users will be able to:
-brew tap Lizzergas/t212-taxes
-brew install t212-taxes
+# Users can install via:
+brew tap Lizzergas/t212-taxes https://github.com/Lizzergas/go-t212-taxes
+brew install --cask t212-taxes
 ```
+- Cask automatically updated on each release
+- Handles unsigned binary quarantine removal
+- Multi-platform support (Intel and Apple Silicon)
 
 **Scoop (Windows)** 🔄 Prepared (needs setup)
 ```bash

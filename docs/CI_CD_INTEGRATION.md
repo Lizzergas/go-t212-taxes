@@ -90,9 +90,9 @@ Our CI/CD system is designed with **resource efficiency** in mind:
 **Release Process**:
 - GoReleaser handles multi-platform builds
 - **Docker image creation and push to GHCR** (ONLY on tagged releases)
-- Homebrew formula updates
-- Scoop manifest updates
-- GitHub Release creation
+- **Homebrew cask automatic updates** to main repository
+- Scoop manifest updates (prepared)
+- GitHub Release creation with full changelog
 
 **Docker Build Policy**:
 - ✅ **Tagged Releases**: Docker images built and pushed automatically

@@ -170,7 +170,7 @@ show_next_steps() {
     echo "  2. Binaries will be built for all platforms (Linux, macOS, Windows)"
     echo "  3. Docker images will be built and pushed to GitHub Container Registry"
     echo "  4. GitHub release will be created with download links"
-    echo "  5. Homebrew formula will be created/updated automatically"
+    echo "  5. Homebrew cask will be created/updated automatically"
     echo "  6. Scoop manifest will be created/updated automatically"
     echo "  7. Release notes will be generated from commit history"
     echo ""
