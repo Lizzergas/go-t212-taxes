@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -70,11 +71,37 @@ var validateCmd = &cobra.Command{
 	Run:   validateFiles,
 }
 
+// incomeCmd represents the income command
+var incomeCmd = &cobra.Command{
+	Use:   "income",
+	Short: "Generate detailed dividend and interest income reports",
+	Long: `Generate comprehensive dividend and interest income reports from Trading 212 CSV files.
+
+Features:
+- Detailed dividend analysis with withholding tax tracking
+- Interest rate analysis and source breakdown
+- Monthly and yearly income breakdowns
+- Top dividend payers identification
+- Currency conversion support
+
+Examples:
+  # Generate income report for all CSV files in exports directory
+  t212-taxes income --dir ./exports
+
+  # Generate income report with JSON output
+  t212-taxes income --dir ./exports --format json --output income_report.json
+
+  # Generate income report for specific files
+  t212-taxes income --files file1.csv,file2.csv`,
+	Run: generateIncomeReport,
+}
+
 func init() {
 	// Add subcommands
 	RootCmd.AddCommand(processCmd)
 	RootCmd.AddCommand(analyzeCmd)
 	RootCmd.AddCommand(validateCmd)
+	RootCmd.AddCommand(incomeCmd)
 
 	// Global flags
 	RootCmd.PersistentFlags().String("currency", "EUR", "Base currency for calculations")
@@ -94,6 +121,13 @@ func init() {
 	// Validate command flags
 	validateCmd.Flags().String("dir", "", "Directory containing CSV files")
 	validateCmd.Flags().String("files", "", "Comma-separated list of CSV files")
+
+	// Income command flags
+	incomeCmd.Flags().String("dir", "", "Directory containing CSV files")
+	incomeCmd.Flags().String("files", "", "Comma-separated list of CSV files")
+	incomeCmd.Flags().String("output", "", "Output file for results (JSON format)")
+	incomeCmd.Flags().String("format", "table", "Output format (table, json)")
+	incomeCmd.Flags().Int("top-payers", 10, "Number of top dividend payers to display")
 
 	// Bind flags to viper
 	viper.BindPFlag("currency", RootCmd.PersistentFlags().Lookup("currency"))
@@ -331,6 +365,205 @@ func saveReportsToFile(yearlyReports []types.YearlyReport, overallReport *types.
 		file.WriteString(fmt.Sprintf("  Total Transactions: %d\n", overallReport.TotalTransactions))
 		file.WriteString(fmt.Sprintf("  Total Gains: %.2f %s\n", overallReport.TotalGains, overallReport.Currency))
 		file.WriteString(fmt.Sprintf("  Overall Percentage: %.2f%%\n", overallReport.OverallPercentage))
+	}
+
+	return nil
+}
+
+// generateIncomeReport handles the income command
+func generateIncomeReport(cmd *cobra.Command, args []string) {
+	files, err := getCSVFiles(cmd)
+	if err != nil {
+		log.Fatalf("Error getting CSV files: %v", err)
+	}
+
+	if len(files) == 0 {
+		log.Fatal("No CSV files found")
+	}
+
+	// Initialize parser and income calculator
+	csvParser := parser.NewCSVParser()
+	currency := viper.GetString("currency")
+	incomeCalc := calculator.NewIncomeCalculator(currency)
+
+	// Parse files
+	fmt.Printf("Processing %d CSV files for income analysis...\n", len(files))
+	result, err := csvParser.ParseMultipleFiles(files)
+	if err != nil {
+		log.Fatalf("Error parsing CSV files: %v", err)
+	}
+
+	// Calculate income report
+	incomeReport, err := incomeCalc.CalculateIncomeReport(result.Transactions)
+	if err != nil {
+		log.Fatalf("Error calculating income report: %v", err)
+	}
+
+	// Output results
+	format, _ := cmd.Flags().GetString("format")
+	outputFile, _ := cmd.Flags().GetString("output")
+
+	if outputFile != "" {
+		err = saveIncomeReportToFile(incomeReport, outputFile, format)
+		if err != nil {
+			log.Fatalf("Error saving income report: %v", err)
+		}
+		fmt.Printf("Income report saved to %s\n", outputFile)
+	} else {
+		printIncomeReport(incomeReport, format)
+	}
+}
+
+// printIncomeReport prints income report to console
+func printIncomeReport(report *types.IncomeReport, format string) {
+	if format == "json" {
+		// Print JSON format
+		fmt.Printf("%+v\n", report)
+	} else {
+		// Print table format
+		printIncomeReportTable(report)
+	}
+}
+
+// printIncomeReportTable prints income report in table format
+func printIncomeReportTable(report *types.IncomeReport) {
+	fmt.Println("\n" + strings.Repeat("=", 80))
+	fmt.Println("                    INCOME REPORT")
+	fmt.Println(strings.Repeat("=", 80))
+	
+	// Summary section
+	fmt.Printf("\n📊 SUMMARY (%s)\n", report.Currency)
+	fmt.Println(strings.Repeat("-", 40))
+	fmt.Printf("Total Income:           %10.2f %s\n", report.TotalIncome, report.Currency)
+	fmt.Printf("Date Range:             %s to %s\n", 
+		report.DateRange.From.Format("2006-01-02"), 
+		report.DateRange.To.Format("2006-01-02"))
+	
+	// Dividend section
+	fmt.Printf("\n💰 DIVIDENDS (%s)\n", report.Currency)
+	fmt.Println(strings.Repeat("-", 40))
+	fmt.Printf("Total Dividends:        %10.2f %s\n", report.Dividends.TotalDividends, report.Currency)
+	fmt.Printf("Withholding Tax:        %10.2f %s\n", report.Dividends.TotalWithholdingTax, report.Currency)
+	fmt.Printf("Net Dividends:          %10.2f %s\n", report.Dividends.NetDividends, report.Currency)
+	fmt.Printf("Dividend Count:         %10d\n", report.Dividends.DividendCount)
+	if report.Dividends.AverageYield > 0 {
+		fmt.Printf("Average Yield:          %10.2f%%\n", report.Dividends.AverageYield)
+	}
+	
+	// Interest section
+	fmt.Printf("\n🏦 INTEREST (%s)\n", report.Currency)
+	fmt.Println(strings.Repeat("-", 40))
+	fmt.Printf("Total Interest:         %10.2f %s\n", report.Interest.TotalInterest, report.Currency)
+	fmt.Printf("Interest Count:         %10d\n", report.Interest.InterestCount)
+	if report.Interest.AverageRate > 0 {
+		fmt.Printf("Average Rate:           %10.2f%%\n", report.Interest.AverageRate)
+	}
+	
+	// Top dividend payers
+	if len(report.Dividends.BySecurity) > 0 {
+		fmt.Printf("\n🏆 TOP DIVIDEND PAYERS (%s)\n", report.Currency)
+		fmt.Println(strings.Repeat("-", 40))
+		
+		// Convert map to slice for sorting
+		type securityAmount struct {
+			security string
+			amount   float64
+		}
+		var securities []securityAmount
+		for security, amount := range report.Dividends.BySecurity {
+			securities = append(securities, securityAmount{security, amount})
+		}
+		
+		// Sort by amount (descending)
+		sort.Slice(securities, func(i, j int) bool {
+			return securities[i].amount > securities[j].amount
+		})
+		
+		// Display top 10
+		limit := 10
+		if len(securities) < limit {
+			limit = len(securities)
+		}
+		
+		for i := 0; i < limit; i++ {
+			fmt.Printf("%-20s %10.2f %s\n", securities[i].security, securities[i].amount, report.Currency)
+		}
+	}
+	
+	// Interest by source
+	if len(report.Interest.BySource) > 0 {
+		fmt.Printf("\n📈 INTEREST BY SOURCE (%s)\n", report.Currency)
+		fmt.Println(strings.Repeat("-", 40))
+		
+		for source, amount := range report.Interest.BySource {
+			fmt.Printf("%-20s %10.2f %s\n", source, amount, report.Currency)
+		}
+	}
+	
+	// Monthly breakdown
+	if len(report.Dividends.ByMonth) > 0 || len(report.Interest.ByMonth) > 0 {
+		fmt.Printf("\n📅 MONTHLY BREAKDOWN (%s)\n", report.Currency)
+		fmt.Println(strings.Repeat("-", 50))
+		fmt.Printf("%-10s %12s %12s %12s\n", "Month", "Dividends", "Interest", "Total")
+		fmt.Println(strings.Repeat("-", 50))
+		
+		// Combine all months
+		allMonths := make(map[string]bool)
+		for month := range report.Dividends.ByMonth {
+			allMonths[month] = true
+		}
+		for month := range report.Interest.ByMonth {
+			allMonths[month] = true
+		}
+		
+		// Convert to slice and sort
+		var months []string
+		for month := range allMonths {
+			months = append(months, month)
+		}
+		sort.Strings(months)
+		
+		for _, month := range months {
+			dividends := report.Dividends.ByMonth[month]
+			interest := report.Interest.ByMonth[month]
+			total := dividends + interest
+			fmt.Printf("%-10s %12.2f %12.2f %12.2f\n", month, dividends, interest, total)
+		}
+	}
+	
+	fmt.Println("\n" + strings.Repeat("=", 80))
+}
+
+// saveIncomeReportToFile saves income report to a file
+func saveIncomeReportToFile(report *types.IncomeReport, filename, format string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if format == "json" {
+		// Save as JSON
+		file.WriteString(fmt.Sprintf("%+v\n", report))
+	} else {
+		// Save as text table
+		file.WriteString("Trading 212 Income Report\n")
+		file.WriteString("=========================\n\n")
+		
+		file.WriteString(fmt.Sprintf("Total Income: %.2f %s\n", report.TotalIncome, report.Currency))
+		file.WriteString(fmt.Sprintf("Date Range: %s to %s\n\n", 
+			report.DateRange.From.Format("2006-01-02"), 
+			report.DateRange.To.Format("2006-01-02")))
+		
+		file.WriteString("Dividends:\n")
+		file.WriteString(fmt.Sprintf("  Total: %.2f %s\n", report.Dividends.TotalDividends, report.Currency))
+		file.WriteString(fmt.Sprintf("  Withholding Tax: %.2f %s\n", report.Dividends.TotalWithholdingTax, report.Currency))
+		file.WriteString(fmt.Sprintf("  Net: %.2f %s\n", report.Dividends.NetDividends, report.Currency))
+		file.WriteString(fmt.Sprintf("  Count: %d\n\n", report.Dividends.DividendCount))
+		
+		file.WriteString("Interest:\n")
+		file.WriteString(fmt.Sprintf("  Total: %.2f %s\n", report.Interest.TotalInterest, report.Currency))
+		file.WriteString(fmt.Sprintf("  Count: %d\n", report.Interest.InterestCount))
 	}
 
 	return nil

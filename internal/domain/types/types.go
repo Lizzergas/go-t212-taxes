@@ -146,3 +146,64 @@ type DateRange struct {
 	From time.Time `json:"from"`
 	To   time.Time `json:"to"`
 }
+
+// DividendRecord represents a detailed dividend transaction
+type DividendRecord struct {
+	Date            time.Time `json:"date"`
+	Ticker          string    `json:"ticker,omitempty"`
+	ISIN            string    `json:"isin,omitempty"`
+	Name            string    `json:"name,omitempty"`
+	Amount          float64   `json:"amount"`
+	Currency        string    `json:"currency"`
+	ExchangeRate    float64   `json:"exchange_rate,omitempty"`
+	WithholdingTax  float64   `json:"withholding_tax,omitempty"`
+	NetAmount       float64   `json:"net_amount"`
+	DividendYield   float64   `json:"dividend_yield,omitempty"`
+	Shares          float64   `json:"shares,omitempty"`
+	PricePerShare   float64   `json:"price_per_share,omitempty"`
+}
+
+// InterestRecord represents a detailed interest transaction
+type InterestRecord struct {
+	Date         time.Time `json:"date"`
+	Amount       float64   `json:"amount"`
+	Currency     string    `json:"currency"`
+	ExchangeRate float64   `json:"exchange_rate,omitempty"`
+	InterestRate float64   `json:"interest_rate,omitempty"`
+	Period       string    `json:"period,omitempty"`
+	Source       string    `json:"source,omitempty"`
+	Notes        string    `json:"notes,omitempty"`
+}
+
+// DividendSummary represents aggregated dividend data
+type DividendSummary struct {
+	TotalDividends     float64           `json:"total_dividends"`
+	TotalWithholdingTax float64          `json:"total_withholding_tax"`
+	NetDividends       float64           `json:"net_dividends"`
+	DividendCount      int               `json:"dividend_count"`
+	AverageYield       float64           `json:"average_yield"`
+	BySecurity         map[string]float64 `json:"by_security"`
+	ByYear             map[int]float64   `json:"by_year"`
+	ByMonth            map[string]float64 `json:"by_month"`
+	Currency           string            `json:"currency"`
+}
+
+// InterestSummary represents aggregated interest data
+type InterestSummary struct {
+	TotalInterest    float64           `json:"total_interest"`
+	InterestCount    int               `json:"interest_count"`
+	AverageRate      float64           `json:"average_rate"`
+	BySource         map[string]float64 `json:"by_source"`
+	ByYear           map[int]float64   `json:"by_year"`
+	ByMonth          map[string]float64 `json:"by_month"`
+	Currency         string            `json:"currency"`
+}
+
+// IncomeReport represents comprehensive income data including dividends and interest
+type IncomeReport struct {
+	Dividends     DividendSummary `json:"dividends"`
+	Interest      InterestSummary `json:"interest"`
+	TotalIncome   float64         `json:"total_income"`
+	Currency      string          `json:"currency"`
+	DateRange     DateRange       `json:"date_range"`
+}

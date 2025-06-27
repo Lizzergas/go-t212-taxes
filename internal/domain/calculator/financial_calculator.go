@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"t212-taxes/internal/domain/types"
@@ -114,18 +115,27 @@ func (fc *FinancialCalculator) calculateYearlyReport(year int, transactions []ty
 				report.TotalDeposits += amount
 			}
 
-		case types.TransactionTypeDividend:
-			// Add dividends to total
-			if transaction.Result != nil {
-				amount := fc.convertToBaseCurrency(*transaction.Result, transaction.CurrencyResult, transaction.ExchangeRate)
-				report.Dividends += amount
-			}
-
-		case types.TransactionTypeInterest:
-			// Add interest to total
-			if transaction.Result != nil {
-				amount := fc.convertToBaseCurrency(*transaction.Result, transaction.CurrencyResult, transaction.ExchangeRate)
-				report.Interest += amount
+		default:
+			// Check for dividend transactions (handle different formats)
+			actionStr := string(transaction.Action)
+			if strings.Contains(strings.ToLower(actionStr), "dividend") {
+				// Add dividends to total
+				if transaction.Result != nil {
+					amount := fc.convertToBaseCurrency(*transaction.Result, transaction.CurrencyResult, transaction.ExchangeRate)
+					report.Dividends += amount
+				} else if transaction.Total != nil {
+					amount := fc.convertToBaseCurrency(*transaction.Total, transaction.CurrencyTotal, transaction.ExchangeRate)
+					report.Dividends += amount
+				}
+			} else if strings.Contains(strings.ToLower(actionStr), "interest") {
+				// Add interest to total
+				if transaction.Result != nil {
+					amount := fc.convertToBaseCurrency(*transaction.Result, transaction.CurrencyResult, transaction.ExchangeRate)
+					report.Interest += amount
+				} else if transaction.Total != nil {
+					amount := fc.convertToBaseCurrency(*transaction.Total, transaction.CurrencyTotal, transaction.ExchangeRate)
+					report.Interest += amount
+				}
 			}
 
 		case types.TransactionTypeMarketSell, types.TransactionTypeLimitSell, types.TransactionTypeStopSell:
