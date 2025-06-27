@@ -6,6 +6,25 @@ This document explains how the comprehensive test suite (`test-all.sh`) is integ
 
 Our CI/CD pipeline uses the `test-all.sh` script as the foundation for all testing and quality checks, ensuring consistency between local development and automated builds.
 
+## Workflow Architecture
+
+Our CI/CD system is designed with **resource efficiency** in mind:
+
+### 🎯 **Workflow Separation Strategy**
+
+| Workflow | Purpose | Triggers | Docker Builds |
+|----------|---------|----------|---------------|
+| **CI Pipeline** | Code validation | Push to main/develop | ❌ No |
+| **PR Validation** | Pull request checks | Pull requests | ❌ No |
+| **Release Pipeline** | Distribution | Version tags only | ✅ Yes |
+
+### 💡 **Why This Design?**
+
+- **Faster Feedback**: PRs and regular commits get quick validation without Docker overhead
+- **Resource Efficiency**: Docker builds only when actually needed (releases)
+- **Cost Optimization**: Reduces CI minutes usage significantly
+- **Better Developer Experience**: Quicker PR validation cycles
+
 ## Workflow Integration
 
 ### 🔄 CI Pipeline (`.github/workflows/ci.yml`)
@@ -31,6 +50,7 @@ Our CI/CD pipeline uses the `test-all.sh` script as the foundation for all testi
 4. **Build Verification**
    - Tests cross-platform builds
    - Verifies binary compilation
+   - **Note**: Docker builds are NOT included in regular CI to save resources
 
 ### 🔍 Pull Request Validation (`.github/workflows/pr.yml`)
 
@@ -69,10 +89,16 @@ Our CI/CD pipeline uses the `test-all.sh` script as the foundation for all testi
 
 **Release Process**:
 - GoReleaser handles multi-platform builds
-- Docker image creation and push to GHCR
+- **Docker image creation and push to GHCR** (ONLY on tagged releases)
 - Homebrew formula updates
 - Scoop manifest updates
 - GitHub Release creation
+
+**Docker Build Policy**:
+- ✅ **Tagged Releases**: Docker images built and pushed automatically
+- ❌ **Regular Commits**: No Docker builds (saves CI resources)
+- ❌ **Pull Requests**: No Docker builds (faster feedback)
+- ❌ **Branch Pushes**: No Docker builds (development only)
 
 ## Testing Standards
 
