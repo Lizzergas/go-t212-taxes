@@ -1,0 +1,112 @@
+name: GoReleaser
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  GO_VERSION: '1.21'
+
+jobs:
+  # Run tests and quality checks before building
+  test:
+    name: Test and Quality Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Run tests
+      run: |
+        go test -v -race -coverprofile=coverage.out ./...
+        go tool cover -func=coverage.out
+
+    - name: Run quality checks
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: v2.1
+        args: --timeout=10m
+      continue-on-error: true
+
+  # GoReleaser handles everything: binaries, Docker, Homebrew, Scoop
+  goreleaser:
+    name: GoReleaser
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Run GoReleaser
+      uses: goreleaser/goreleaser-action@v5
+      with:
+        distribution: goreleaser
+        version: latest
+        args: release --clean
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Update release with additional installation instructions
+  update-release:
+    name: Update Release Notes
+    runs-on: ubuntu-latest
+    needs: goreleaser
+    steps:
+    - name: Update release with installation instructions
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        append_body: true
+        body: |
+          
+          ## 📦 Additional Installation Methods
+          
+          **Homebrew (macOS/Linux):**
+          ```bash
+          brew tap Lizzergas/go-t212-taxes
+          brew install t212-taxes
+          ```
+          
+          **Scoop (Windows):**
+          ```bash
+          scoop bucket add t212-taxes https://github.com/Lizzergas/go-t212-taxes
+          scoop install t212-taxes
+          ```
+          
+          **Verify Installation:**
+          ```bash
+          t212-taxes version
+          ```
+          
+          ---
+          
+          **🐛 Found an issue?** [Report it here](https://github.com/${{ github.repository }}/issues)
+          **💬 Questions?** [Start a discussion](https://github.com/${{ github.repository }}/discussions)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

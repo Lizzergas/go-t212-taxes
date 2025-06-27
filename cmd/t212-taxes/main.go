@@ -13,9 +13,20 @@ import (
 	"github.com/Lizzergas/go-t212-taxes/internal/app/cli"
 )
 
+// Build-time variables injected via ldflags
+var (
+	version = "dev"      // Version will be set during build: -X main.version=v1.0.0
+	commit  = "unknown"  // Git commit hash: -X main.commit=abc123
+	date    = "unknown"  // Build date: -X main.date=2024-01-01T00:00:00Z
+	builtBy = "source"   // How it was built: -X main.builtBy=goreleaser
+)
+
 func main() {
 	// Initialize configuration
 	initConfig()
+
+	// Set version information for CLI
+	cli.SetVersionInfo(version, commit, date, builtBy)
 
 	// Execute the root command
 	if err := cli.RootCmd.Execute(); err != nil {

@@ -1,6 +1,11 @@
 # Build stage
 FROM golang:1.21-alpine AS builder
 
+# Build arguments for version information
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG DATE=unknown
+
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
@@ -16,9 +21,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application with version information
 RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE} -X main.builtBy=docker" \
     -o t212-taxes ./cmd/t212-taxes
 
 # Final stage

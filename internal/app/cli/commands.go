@@ -19,6 +19,22 @@ import (
 	"github.com/Lizzergas/go-t212-taxes/internal/domain/types"
 )
 
+// Version information set at build time
+var (
+	BuildVersion = "dev"
+	BuildCommit  = "unknown"
+	BuildDate    = "unknown"
+	BuildBy      = "source"
+)
+
+// SetVersionInfo sets the version information from main package
+func SetVersionInfo(version, commit, date, builtBy string) {
+	BuildVersion = version
+	BuildCommit = commit
+	BuildDate = date
+	BuildBy = builtBy
+}
+
 // Constants for default values
 const (
 	DefaultTopPayers   = 10
@@ -141,6 +157,21 @@ Examples:
 	Run: generatePortfolioReport,
 }
 
+// versionCmd represents the version command
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Show version information",
+	Long: `Display detailed version information including build details.
+
+Examples:
+  # Show version information
+  t212-taxes version
+
+  # Show version in JSON format
+  t212-taxes version --format json`,
+	Run: showVersion,
+}
+
 func init() {
 	// Add subcommands
 	RootCmd.AddCommand(processCmd)
@@ -148,6 +179,7 @@ func init() {
 	RootCmd.AddCommand(validateCmd)
 	RootCmd.AddCommand(incomeCmd)
 	RootCmd.AddCommand(portfolioCmd)
+	RootCmd.AddCommand(versionCmd)
 
 	// Global flags
 	RootCmd.PersistentFlags().String("currency", "EUR", "Base currency for calculations")
@@ -182,6 +214,9 @@ func init() {
 	portfolioCmd.Flags().String("format", TableFormat, "Output format (table, json)")
 	portfolioCmd.Flags().Int("max-holdings", DefaultMaxHoldings, "Maximum number of holdings to display per year")
 	portfolioCmd.Flags().Bool("show-all", false, "Show all positions (ignores max-holdings limit)")
+
+	// Version command flags
+	versionCmd.Flags().String("format", TableFormat, "Output format (table, json)")
 
 	// Bind flags to viper
 	_ = viper.BindPFlag("currency", RootCmd.PersistentFlags().Lookup("currency"))
@@ -769,4 +804,28 @@ func printPortfolioReportTable(report *types.PortfolioValuationReport, maxHoldin
 	}
 
 	fmt.Println("\n" + strings.Repeat("=", SeparatorWidth80))
+}
+
+// showVersion displays version information
+func showVersion(cmd *cobra.Command, args []string) {
+	format, _ := cmd.Flags().GetString("format")
+
+	if format == JSONFormat {
+		versionInfo := map[string]string{
+			"version": BuildVersion,
+			"commit":  BuildCommit,
+			"date":    BuildDate,
+			"builtBy": BuildBy,
+		}
+		jsonData, err := json.MarshalIndent(versionInfo, "", "  ")
+		if err != nil {
+			log.Fatalf("Error marshaling version info to JSON: %v", err)
+		}
+		fmt.Println(string(jsonData))
+	} else {
+		fmt.Printf("T212 Taxes %s\n", BuildVersion)
+		fmt.Printf("Commit:    %s\n", BuildCommit)
+		fmt.Printf("Built:     %s\n", BuildDate)
+		fmt.Printf("Built by:  %s\n", BuildBy)
+	}
 }

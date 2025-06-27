@@ -305,6 +305,31 @@ The CI won't fail for linting issues within the threshold, but exceeding it indi
 - Configuration file security best practices
 - Dependency vulnerability scanning via CI/CD
 
+## 🚀 Releases
+
+This project uses automated releases with semantic versioning. When maintainers push a version tag (e.g., `v1.0.0`), the CI/CD system automatically:
+
+- Builds binaries for all platforms (Windows, macOS, Linux)
+- Creates Docker images and pushes to GitHub Container Registry
+- Generates release notes and publishes to GitHub Releases
+- Provides SHA256 checksums for security verification
+
+### Version Information
+
+Check your installation version:
+```bash
+t212-taxes version
+t212-taxes version --format json
+```
+
+### Release Schedule
+
+- **Stable releases**: Monthly or when significant features are ready
+- **Pre-releases**: For beta testing new features (e.g., `v1.0.0-beta.1`)
+- **Patch releases**: As needed for critical bug fixes
+
+See the [Release Process Documentation](docs/RELEASE_PROCESS.md) for detailed information.
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
