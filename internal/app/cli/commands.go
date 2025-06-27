@@ -405,14 +405,14 @@ func saveReportsToFile(yearlyReports []types.YearlyReport, overallReport *types.
 		_, _ = file.WriteString("{\n")
 		_, _ = file.WriteString("  \"yearly_reports\": [\n")
 		for i, report := range yearlyReports {
-			_, _ = file.WriteString(fmt.Sprintf("    %+v", report))
+			_, _ = fmt.Fprintf(file, "    %+v", report)
 			if i < len(yearlyReports)-1 {
 				_, _ = file.WriteString(",")
 			}
 			_, _ = file.WriteString("\n")
 		}
-		_, _ = file.WriteString("  ],\n")
-		_, _ = file.WriteString(fmt.Sprintf("  \"overall_report\": %+v\n", overallReport))
+		_, _ = fmt.Fprintf(file, "  ],\n")
+		_, _ = fmt.Fprintf(file, "  \"overall_report\": %+v\n", overallReport)
 		_, _ = file.WriteString("}\n")
 	} else {
 		// Save as text table
@@ -420,20 +420,20 @@ func saveReportsToFile(yearlyReports []types.YearlyReport, overallReport *types.
 		_, _ = file.WriteString("======================\n\n")
 
 		for _, report := range yearlyReports {
-			_, _ = file.WriteString(fmt.Sprintf("Year %d:\n", report.Year))
-			_, _ = file.WriteString(fmt.Sprintf("  Deposits: %.2f %s\n", report.TotalDeposits, report.Currency))
-			_, _ = file.WriteString(fmt.Sprintf("  Transactions: %d\n", report.TotalTransactions))
-			_, _ = file.WriteString(fmt.Sprintf("  Capital Gains: %.2f %s\n", report.CapitalGains, report.Currency))
-			_, _ = file.WriteString(fmt.Sprintf("  Dividends: %.2f %s\n", report.Dividends, report.Currency))
-			_, _ = file.WriteString(fmt.Sprintf("  Total Gains: %.2f %s\n", report.TotalGains, report.Currency))
-			_, _ = file.WriteString(fmt.Sprintf("  Percentage Increase: %.2f%%\n\n", report.PercentageIncrease))
+			_, _ = fmt.Fprintf(file, "Year %d:\n", report.Year)
+			_, _ = fmt.Fprintf(file, "  Deposits: %.2f %s\n", report.TotalDeposits, report.Currency)
+			_, _ = fmt.Fprintf(file, "  Transactions: %d\n", report.TotalTransactions)
+			_, _ = fmt.Fprintf(file, "  Capital Gains: %.2f %s\n", report.CapitalGains, report.Currency)
+			_, _ = fmt.Fprintf(file, "  Dividends: %.2f %s\n", report.Dividends, report.Currency)
+			_, _ = fmt.Fprintf(file, "  Total Gains: %.2f %s\n", report.TotalGains, report.Currency)
+			_, _ = fmt.Fprintf(file, "  Percentage Increase: %.2f%%\n\n", report.PercentageIncrease)
 		}
 
 		_, _ = file.WriteString("Overall Summary:\n")
-		_, _ = file.WriteString(fmt.Sprintf("  Total Deposits: %.2f %s\n", overallReport.TotalDeposits, overallReport.Currency))
-		_, _ = file.WriteString(fmt.Sprintf("  Total Transactions: %d\n", overallReport.TotalTransactions))
-		_, _ = file.WriteString(fmt.Sprintf("  Total Gains: %.2f %s\n", overallReport.TotalGains, overallReport.Currency))
-		_, _ = file.WriteString(fmt.Sprintf("  Overall Percentage: %.2f%%\n", overallReport.OverallPercentage))
+		_, _ = fmt.Fprintf(file, "  Total Deposits: %.2f %s\n", overallReport.TotalDeposits, overallReport.Currency)
+		_, _ = fmt.Fprintf(file, "  Total Transactions: %d\n", overallReport.TotalTransactions)
+		_, _ = fmt.Fprintf(file, "  Total Gains: %.2f %s\n", overallReport.TotalGains, overallReport.Currency)
+		_, _ = fmt.Fprintf(file, "  Overall Percentage: %.2f%%\n", overallReport.OverallPercentage)
 	}
 
 	return nil
@@ -613,26 +613,26 @@ func saveIncomeReportToFile(report *types.IncomeReport, filename, format string)
 
 	if format == JSONFormat {
 		// Save as JSON
-		_, _ = file.WriteString(fmt.Sprintf("%+v\n", report))
+		_, _ = fmt.Fprintf(file, "%+v\n", report)
 	} else {
 		// Save as text table
 		_, _ = file.WriteString("Trading 212 Income Report\n")
 		_, _ = file.WriteString("=========================\n\n")
 
-		_, _ = file.WriteString(fmt.Sprintf("Total Income: %.2f %s\n", report.TotalIncome, report.Currency))
-		_, _ = file.WriteString(fmt.Sprintf("Date Range: %s to %s\n\n",
+		_, _ = fmt.Fprintf(file, "Total Income: %.2f %s\n", report.TotalIncome, report.Currency)
+		_, _ = fmt.Fprintf(file, "Date Range: %s to %s\n\n",
 			report.DateRange.From.Format("2006-01-02"),
-			report.DateRange.To.Format("2006-01-02")))
+			report.DateRange.To.Format("2006-01-02"))
 
 		_, _ = file.WriteString("Dividends:\n")
-		_, _ = file.WriteString(fmt.Sprintf("  Total: %.2f %s\n", report.Dividends.TotalDividends, report.Currency))
-		_, _ = file.WriteString(fmt.Sprintf("  Withholding Tax: %.2f %s\n", report.Dividends.TotalWithholdingTax, report.Currency))
-		_, _ = file.WriteString(fmt.Sprintf("  Net: %.2f %s\n", report.Dividends.NetDividends, report.Currency))
-		_, _ = file.WriteString(fmt.Sprintf("  Count: %d\n\n", report.Dividends.DividendCount))
+		_, _ = fmt.Fprintf(file, "  Total: %.2f %s\n", report.Dividends.TotalDividends, report.Currency)
+		_, _ = fmt.Fprintf(file, "  Withholding Tax: %.2f %s\n", report.Dividends.TotalWithholdingTax, report.Currency)
+		_, _ = fmt.Fprintf(file, "  Net: %.2f %s\n", report.Dividends.NetDividends, report.Currency)
+		_, _ = fmt.Fprintf(file, "  Count: %d\n\n", report.Dividends.DividendCount)
 
 		_, _ = file.WriteString("Interest:\n")
-		_, _ = file.WriteString(fmt.Sprintf("  Total: %.2f %s\n", report.Interest.TotalInterest, report.Currency))
-		_, _ = file.WriteString(fmt.Sprintf("  Count: %d\n", report.Interest.InterestCount))
+		_, _ = fmt.Fprintf(file, "  Total: %.2f %s\n", report.Interest.TotalInterest, report.Currency)
+		_, _ = fmt.Fprintf(file, "  Count: %d\n", report.Interest.InterestCount)
 	}
 
 	return nil

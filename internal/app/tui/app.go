@@ -489,11 +489,22 @@ func (m Model) renderPortfolioView() string {
 	portfolio := *m.CurrentPortfolio
 	var content strings.Builder
 
-	// Header
+	// Build content sections
+	m.renderPortfolioHeader(&content, portfolio)
+	m.renderPortfolioSummary(&content, portfolio)
+	m.renderPortfolioActivity(&content, portfolio)
+	m.renderPortfolioPositions(&content, portfolio)
+	m.renderPortfolioNavigation(&content, portfolio)
+
+	return boxStyle.Render(content.String())
+}
+
+func (m Model) renderPortfolioHeader(content *strings.Builder, portfolio types.PortfolioSummary) {
 	content.WriteString(headerStyle.Render(fmt.Sprintf("📊 Portfolio as of Dec 31, %d", portfolio.Year)))
 	content.WriteString("\n\n")
+}
 
-	// Summary statistics
+func (m Model) renderPortfolioSummary(content *strings.Builder, portfolio types.PortfolioSummary) {
 	content.WriteString(headerStyle.Render("📈 Portfolio Summary"))
 	content.WriteString("\n")
 	content.WriteString(fmt.Sprintf("📦 Total Positions: %s\n",
@@ -509,16 +520,18 @@ func (m Model) renderPortfolioView() string {
 	gainLossText := fmt.Sprintf("%.2f %s (%.2f%%)",
 		portfolio.TotalUnrealizedGainLoss, portfolio.Currency, portfolio.TotalUnrealizedGainLossPercent)
 	var gainLossStyled string
-	if portfolio.TotalUnrealizedGainLoss > 0 {
+	switch {
+	case portfolio.TotalUnrealizedGainLoss > 0:
 		gainLossStyled = infoStyle.Render("📈 " + gainLossText)
-	} else if portfolio.TotalUnrealizedGainLoss < 0 {
+	case portfolio.TotalUnrealizedGainLoss < 0:
 		gainLossStyled = errorStyle.Render("📉 " + gainLossText)
-	} else {
+	default:
 		gainLossStyled = valueStyle.Render("➖ " + gainLossText)
 	}
 	content.WriteString(fmt.Sprintf("Unrealized P&L: %s\n", gainLossStyled))
+}
 
-	// Yearly activity
+func (m Model) renderPortfolioActivity(content *strings.Builder, portfolio types.PortfolioSummary) {
 	content.WriteString("\n")
 	content.WriteString(headerStyle.Render(fmt.Sprintf("💡 %d Activity", portfolio.Year)))
 	content.WriteString("\n")
@@ -530,116 +543,127 @@ func (m Model) renderPortfolioView() string {
 		content.WriteString(fmt.Sprintf("🏦 Interest: %s\n",
 			currencyStyle.Render(formatCurrency(portfolio.YearlyInterest, portfolio.Currency))))
 	}
+}
 
-	// Positions table with market data
-	if len(portfolio.Positions) > 0 {
-		content.WriteString("\n")
-		if m.PortfolioExpanded {
-			content.WriteString(headerStyle.Render(fmt.Sprintf(
-				"🎯 All Holdings (%d positions) - Position %d/%d",
-				len(portfolio.Positions), m.PortfolioCursor+1, len(portfolio.Positions))))
-		} else {
-			visiblePositions := minInt(len(portfolio.Positions), MaxPositions)
-			content.WriteString(headerStyle.Render(fmt.Sprintf("🎯 Top Holdings - Position %d/%d", m.PortfolioCursor+1, visiblePositions)))
-		}
-		content.WriteString("\n")
-
-		// Table header with market data
-		content.WriteString(fmt.Sprintf("%-8s %8s %10s %12s %12s %10s %8s\n",
-			"Ticker", "Shares", "Last Price", "Total Cost", "Market Val", "P&L", "P&L %"))
-		content.WriteString(strings.Repeat("-", SeparatorWidth))
-		content.WriteString("\n")
-
-		// Calculate scrollable view
-		maxPositions := len(portfolio.Positions)
-		if !m.PortfolioExpanded && maxPositions > 10 {
-			maxPositions = 10
-		}
-
-		// Calculate available height for positions (terminal height minus headers/footers)
-		availableHeight := m.Height - AvailableHeightReduction // Reserve space for headers, summary, and navigation
-		if availableHeight < MinAvailableHeight {
-			availableHeight = MinAvailableHeight
-		}
-
-		// Calculate visible range
-		startIdx := m.PortfolioScroll
-		endIdx := minInt(startIdx+availableHeight, maxPositions)
-
-		// Show scroll indicator if needed
-		if maxPositions > availableHeight {
-			content.WriteString(fmt.Sprintf("▲ Scroll: %d-%d of %d positions ▲\n", startIdx+1, endIdx, maxPositions))
-		}
-
-		// Render visible positions with cursor highlighting
-		for i := startIdx; i < endIdx; i++ {
-			pos := portfolio.Positions[i]
-
-			// Format P&L with proper sign and alignment
-			plText := ""
-			if pos.UnrealizedGainLoss > 0 {
-				plText = fmt.Sprintf("+%.0f", pos.UnrealizedGainLoss)
-			} else if pos.UnrealizedGainLoss < 0 {
-				plText = fmt.Sprintf("%.0f", pos.UnrealizedGainLoss) // negative sign already included
-			} else {
-				plText = "0"
-			}
-
-			// Format P&L percentage with proper sign
-			plPercentText := ""
-			if pos.UnrealizedGainLossPercent > 0 {
-				plPercentText = fmt.Sprintf("+%.1f%%", pos.UnrealizedGainLossPercent)
-			} else if pos.UnrealizedGainLossPercent < 0 {
-				plPercentText = fmt.Sprintf("%.1f%%", pos.UnrealizedGainLossPercent) // negative sign already included
-			} else {
-				plPercentText = "0.0%"
-			}
-
-			// Format the position row with proper right-alignment for numbers
-			positionRow := fmt.Sprintf("%-8s %8.1f %10.2f %12.2f %12.2f %10s %8s",
-				pos.Ticker,
-				pos.Shares,
-				pos.LastPrice,
-				pos.TotalCost,
-				pos.MarketValue,
-				plText,
-				plPercentText)
-
-			// Highlight selected position
-			if i == m.PortfolioCursor {
-				// Create highlighted style for selected position
-				selectedStyle := lipgloss.NewStyle().
-					Foreground(lipgloss.Color("#000000")).
-					Background(lipgloss.Color("#FF69B4")).
-					Bold(true)
-
-				// Render the highlighted row with fixed width to maintain alignment
-				content.WriteString(selectedStyle.Render(positionRow))
-				content.WriteString(" ← Selected")
-			} else {
-				content.WriteString(positionRow)
-			}
-			content.WriteString("\n")
-		}
-
-		// Show scroll indicator at bottom if needed
-		if maxPositions > availableHeight && endIdx < maxPositions {
-			remaining := maxPositions - endIdx
-			content.WriteString(fmt.Sprintf("▼ ... and %d more positions below ▼\n", remaining))
-		}
-
-		// Show expand/collapse information
-		if !m.PortfolioExpanded && len(portfolio.Positions) > 10 {
-			remaining := len(portfolio.Positions) - MaxPositions
-			content.WriteString(fmt.Sprintf("\n📋 Total: %d positions (%d more available with expand)\n", len(portfolio.Positions), remaining))
-			content.WriteString(infoStyle.Render("Press 'e' or 'x' to expand all positions"))
-		} else if m.PortfolioExpanded && len(portfolio.Positions) > 10 {
-			content.WriteString(fmt.Sprintf("\n📋 All %d positions available\n", len(portfolio.Positions)))
-			content.WriteString(infoStyle.Render("Press 'e' or 'x' to collapse to top 10"))
-		}
+func (m Model) renderPortfolioPositions(content *strings.Builder, portfolio types.PortfolioSummary) {
+	if len(portfolio.Positions) == 0 {
+		return
 	}
 
-	// Navigation help
+	content.WriteString("\n")
+	m.renderPositionsHeader(content, portfolio)
+	m.renderPositionsTable(content, portfolio)
+	m.renderPositionsExpandInfo(content, portfolio)
+}
+
+func (m Model) renderPositionsHeader(content *strings.Builder, portfolio types.PortfolioSummary) {
+	if m.PortfolioExpanded {
+		content.WriteString(headerStyle.Render(fmt.Sprintf(
+			"🎯 All Holdings (%d positions) - Position %d/%d",
+			len(portfolio.Positions), m.PortfolioCursor+1, len(portfolio.Positions))))
+	} else {
+		visiblePositions := minInt(len(portfolio.Positions), MaxPositions)
+		content.WriteString(headerStyle.Render(fmt.Sprintf("🎯 Top Holdings - Position %d/%d", m.PortfolioCursor+1, visiblePositions)))
+	}
+	content.WriteString("\n")
+
+	// Table header
+	content.WriteString(fmt.Sprintf("%-8s %8s %10s %12s %12s %10s %8s\n",
+		"Ticker", "Shares", "Last Price", "Total Cost", "Market Val", "P&L", "P&L %"))
+	content.WriteString(strings.Repeat("-", SeparatorWidth))
+	content.WriteString("\n")
+}
+
+func (m Model) renderPositionsTable(content *strings.Builder, portfolio types.PortfolioSummary) {
+	maxPositions := len(portfolio.Positions)
+	if !m.PortfolioExpanded && maxPositions > 10 {
+		maxPositions = 10
+	}
+
+	// Calculate available height and visible range
+	availableHeight := m.Height - AvailableHeightReduction
+	if availableHeight < MinAvailableHeight {
+		availableHeight = MinAvailableHeight
+	}
+
+	startIdx := m.PortfolioScroll
+	endIdx := minInt(startIdx+availableHeight, maxPositions)
+
+	// Show scroll indicator
+	if maxPositions > availableHeight {
+		content.WriteString(fmt.Sprintf("▲ Scroll: %d-%d of %d positions ▲\n", startIdx+1, endIdx, maxPositions))
+	}
+
+	// Render positions
+	for i := startIdx; i < endIdx; i++ {
+		pos := portfolio.Positions[i]
+		positionRow := m.formatPositionRow(pos)
+
+		if i == m.PortfolioCursor {
+			selectedStyle := lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#000000")).
+				Background(lipgloss.Color("#FF69B4")).
+				Bold(true)
+			content.WriteString(selectedStyle.Render(positionRow))
+			content.WriteString(" ← Selected")
+		} else {
+			content.WriteString(positionRow)
+		}
+		content.WriteString("\n")
+	}
+
+	// Show bottom scroll indicator
+	if maxPositions > availableHeight && endIdx < maxPositions {
+		remaining := maxPositions - endIdx
+		content.WriteString(fmt.Sprintf("▼ ... and %d more positions below ▼\n", remaining))
+	}
+}
+
+func (m Model) formatPositionRow(pos types.PortfolioPosition) string {
+	// Format P&L with proper sign
+	plText := ""
+	switch {
+	case pos.UnrealizedGainLoss > 0:
+		plText = fmt.Sprintf("+%.0f", pos.UnrealizedGainLoss)
+	case pos.UnrealizedGainLoss < 0:
+		plText = fmt.Sprintf("%.0f", pos.UnrealizedGainLoss)
+	default:
+		plText = "0"
+	}
+
+	// Format P&L percentage
+	plPercentText := ""
+	switch {
+	case pos.UnrealizedGainLossPercent > 0:
+		plPercentText = fmt.Sprintf("+%.1f%%", pos.UnrealizedGainLossPercent)
+	case pos.UnrealizedGainLossPercent < 0:
+		plPercentText = fmt.Sprintf("%.1f%%", pos.UnrealizedGainLossPercent)
+	default:
+		plPercentText = "0.0%"
+	}
+
+	return fmt.Sprintf("%-8s %8.1f %10.2f %12.2f %12.2f %10s %8s",
+		pos.Ticker,
+		pos.Shares,
+		pos.LastPrice,
+		pos.TotalCost,
+		pos.MarketValue,
+		plText,
+		plPercentText)
+}
+
+func (m Model) renderPositionsExpandInfo(content *strings.Builder, portfolio types.PortfolioSummary) {
+	if !m.PortfolioExpanded && len(portfolio.Positions) > 10 {
+		remaining := len(portfolio.Positions) - MaxPositions
+		content.WriteString(fmt.Sprintf("\n📋 Total: %d positions (%d more available with expand)\n", len(portfolio.Positions), remaining))
+		content.WriteString(infoStyle.Render("Press 'e' or 'x' to expand all positions"))
+	} else if m.PortfolioExpanded && len(portfolio.Positions) > 10 {
+		content.WriteString(fmt.Sprintf("\n📋 All %d positions available\n", len(portfolio.Positions)))
+		content.WriteString(infoStyle.Render("Press 'e' or 'x' to collapse to top 10"))
+	}
+}
+
+func (m Model) renderPortfolioNavigation(content *strings.Builder, portfolio types.PortfolioSummary) {
 	content.WriteString("\n\n")
 	var navHelp string
 	if len(portfolio.Positions) > 0 {
@@ -656,8 +680,6 @@ func (m Model) renderPortfolioView() string {
 		Foreground(lipgloss.Color("#626262")).
 		Render(navHelp)
 	content.WriteString(navHelpStyled)
-
-	return boxStyle.Render(content.String())
 }
 
 // renderIncomeView renders the income report view

@@ -142,7 +142,11 @@ func (pc *PortfolioCalculator) calculateYearlyMetrics(transactions []types.Trans
 }
 
 // processTransactionsForPositions processes trade transactions to build positions and track prices
-func (pc *PortfolioCalculator) processTransactionsForPositions(transactions []types.Transaction, positions map[string]*types.PortfolioPosition, lastPrices map[string]*PriceInfo) {
+func (pc *PortfolioCalculator) processTransactionsForPositions(
+	transactions []types.Transaction,
+	positions map[string]*types.PortfolioPosition,
+	lastPrices map[string]*PriceInfo,
+) {
 	for _, tx := range transactions {
 		if !pc.isTradeTransaction(tx) || tx.Ticker == nil || tx.ISIN == nil {
 			continue
@@ -164,7 +168,11 @@ func (pc *PortfolioCalculator) processTransactionsForPositions(transactions []ty
 }
 
 // getOrCreatePosition gets existing position or creates a new one
-func (pc *PortfolioCalculator) getOrCreatePosition(positions map[string]*types.PortfolioPosition, ticker string, tx types.Transaction) *types.PortfolioPosition {
+func (pc *PortfolioCalculator) getOrCreatePosition(
+	positions map[string]*types.PortfolioPosition,
+	ticker string,
+	tx types.Transaction,
+) *types.PortfolioPosition {
 	position, exists := positions[ticker]
 	if !exists {
 		position = &types.PortfolioPosition{
@@ -182,7 +190,11 @@ func (pc *PortfolioCalculator) getOrCreatePosition(positions map[string]*types.P
 }
 
 // updateLastPrice updates the last price information for a ticker
-func (pc *PortfolioCalculator) updateLastPrice(lastPrices map[string]*PriceInfo, ticker string, tx types.Transaction) {
+func (pc *PortfolioCalculator) updateLastPrice(
+	lastPrices map[string]*PriceInfo,
+	ticker string,
+	tx types.Transaction,
+) {
 	if tx.PricePerShare != nil && *tx.PricePerShare > 0 {
 		priceInBaseCurrency := pc.convertToBaseCurrency(*tx.PricePerShare, tx.CurrencyPricePerShare, tx.ExchangeRate)
 
@@ -204,7 +216,10 @@ type PositionTotals struct {
 }
 
 // buildFinalPositions converts positions map to sorted slice and calculates totals
-func (pc *PortfolioCalculator) buildFinalPositions(positions map[string]*types.PortfolioPosition, lastPrices map[string]*PriceInfo) ([]types.PortfolioPosition, *PositionTotals) {
+func (pc *PortfolioCalculator) buildFinalPositions(
+	positions map[string]*types.PortfolioPosition,
+	lastPrices map[string]*PriceInfo,
+) ([]types.PortfolioPosition, *PositionTotals) {
 	var finalPositions []types.PortfolioPosition
 	totals := &PositionTotals{}
 

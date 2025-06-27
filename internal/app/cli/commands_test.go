@@ -14,7 +14,7 @@ func TestGetCSVFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir) //nolint:errcheck
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create test CSV files
 	testFiles := []string{

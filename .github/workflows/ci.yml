@@ -10,6 +10,13 @@ on:
 env:
   GO_VERSION: '1.21'
 
+# Global permissions for the workflow
+permissions:
+  contents: read
+  pull-requests: read
+  security-events: write  # Required for SARIF upload
+  actions: read
+
 jobs:
   test:
     name: Test
@@ -81,6 +88,10 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # Required for SARIF upload
+      actions: read
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -92,13 +103,61 @@ jobs:
 
     - name: Run Gosec Security Scanner
       run: |
+        echo "Installing gosec..."
         go install github.com/securego/gosec/v2/cmd/gosec@latest
-        gosec -fmt sarif -out gosec.sarif ./... || true
+        
+        echo "Running gosec security scan..."
+        gosec -fmt sarif -out gosec.sarif ./... || {
+          echo "Gosec found security issues (exit code: $?), but continuing..."
+          echo "This is expected behavior when security issues are found."
+        }
+        
+        echo "Gosec scan completed. Checking output..."
+        if [ -f "gosec.sarif" ]; then
+          echo "SARIF file created successfully"
+          echo "File size: $(wc -c < gosec.sarif) bytes"
+          echo "Sample content:"
+          head -n 10 gosec.sarif
+        else
+          echo "Warning: SARIF file was not created"
+        fi
+
+    - name: Check if SARIF file exists
+      id: sarif_check
+      run: |
+        if [ -f "gosec.sarif" ]; then
+          echo "sarif_exists=true" >> $GITHUB_OUTPUT
+          echo "SARIF file exists and has size: $(wc -c < gosec.sarif) bytes"
+        else
+          echo "sarif_exists=false" >> $GITHUB_OUTPUT
+          echo "SARIF file does not exist"
+        fi
+
+    - name: Display security scan summary
+      if: steps.sarif_check.outputs.sarif_exists == 'true'
+      run: |
+        echo "=== Security Scan Summary ==="
+        echo "Running human-readable gosec output for logs..."
+        gosec ./... || {
+          echo "Security issues found. Check the SARIF file for details."
+          echo "This is normal if security issues exist in the codebase."
+        }
+        echo "=== End Summary ==="
 
     - name: Upload SARIF file
+      if: steps.sarif_check.outputs.sarif_exists == 'true'
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: gosec.sarif
+        category: gosec
+      continue-on-error: true  # Don't fail the workflow if SARIF upload fails
+
+    - name: Upload SARIF as artifact (fallback)
+      if: steps.sarif_check.outputs.sarif_exists == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: gosec-sarif
+        path: gosec.sarif
 
   build:
     name: Build
@@ -142,6 +201,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, lint, build]
     if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write  # Required for creating releases
+      actions: read
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -184,6 +246,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, lint]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      packages: write  # Required for pushing to GitHub Container Registry
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
