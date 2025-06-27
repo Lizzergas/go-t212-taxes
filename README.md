@@ -66,6 +66,20 @@ chmod +x t212-taxes
 curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/t212-taxes-windows-amd64.exe -o t212-taxes.exe
 ```
 
+### Homebrew (Recommended)
+
+```bash
+brew tap Lizzergas/go-t212-taxes
+brew install t212-taxes
+```
+
+### Scoop (Windows)
+
+```bash
+scoop bucket add t212-taxes https://github.com/Lizzergas/go-t212-taxes
+scoop install t212-taxes
+```
+
 ### Go Install
 
 ```bash

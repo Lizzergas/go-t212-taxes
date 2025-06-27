@@ -17,15 +17,19 @@ That's it! 🎉 GitHub Actions will handle the rest.
 
 ## What Happens Next?
 
-1. **CI/CD triggers** (~20-30 minutes total)
+1. **GoReleaser triggers** (~15-20 minutes total)
    - ✅ Tests and quality checks (5-10 min)
-   - ✅ Build binaries for all platforms (10-15 min)
-   - ✅ Build and push Docker images (5-10 min)
-   - ✅ Update release with download links (2-5 min)
+   - ✅ Build binaries for all platforms (5-8 min)
+   - ✅ Build and push Docker images (3-5 min)
+   - ✅ Create Homebrew formula automatically (1-2 min)
+   - ✅ Create Scoop manifest automatically (1-2 min)
+   - ✅ Update release with download links (1-2 min)
 
 2. **Artifacts created:**
    - GitHub Release with binaries and checksums
    - Docker images on `ghcr.io/lizzergas/go-t212-taxes:v1.0.0`
+   - Homebrew formula in `Formula/t212-taxes.rb`
+   - Scoop manifest in `bucket/t212-taxes.json`
    - Go module available via `go install ...@v1.0.0`
 
 3. **Users can install with:**
