@@ -1,5 +1,7 @@
 # T212 Taxes 📊
 
+> ⚠️ **Warning:** This repository is _vibe coded_ hard—hacky and unconventional, but it works!
+> 
 > A comprehensive Go application for processing Trading 212 CSV exports and calculating tax obligations with modern tooling and beautiful UI.
 
 [![CI/CD](https://github.com/Lizzergas/go-t212-taxes/workflows/CI%2FCD%20Pipeline/badge.svg)](hhttps://github.com/Lizzergas/go-t212-taxes/actions)
