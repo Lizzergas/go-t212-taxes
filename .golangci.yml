@@ -8,8 +8,8 @@ run:
   tests: true
 
 issues:
-  max-issues-per-linter: 50
-  max-same-issues: 10
+  max-issues-per-linter: 10
+  max-same-issues: 3
 
 linters:
   enable:

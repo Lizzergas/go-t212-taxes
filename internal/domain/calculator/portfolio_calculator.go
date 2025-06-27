@@ -30,7 +30,7 @@ func (pc *PortfolioCalculator) CalculatePortfolioValuation(transactions []types.
 	// Get all unique years from transactions
 	years := pc.extractYears(transactions)
 
-	var yearlyPortfolios []types.PortfolioSummary
+	yearlyPortfolios := make([]types.PortfolioSummary, 0, len(years))
 
 	for _, year := range years {
 		portfolio := pc.CalculateEndOfYearPortfolio(transactions, year)
@@ -56,7 +56,7 @@ func (pc *PortfolioCalculator) extractYears(transactions []types.Transaction) []
 		}
 	}
 
-	var years []int
+	years := make([]int, 0, len(yearMap))
 	for year := range yearMap {
 		years = append(years, year)
 	}

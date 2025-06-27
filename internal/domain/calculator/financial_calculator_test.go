@@ -365,7 +365,7 @@ func TestFinancialCalculator_calculateSecurityGainsLosses(t *testing.T) {
 		},
 	}
 
-	gains, losses, err := calc.calculateSecurityGainsLosses("TEST", transactions)
+	gains, losses, err := calc.calculateSecurityGainsLosses(transactions)
 	if err != nil {
 		t.Fatalf("calculateSecurityGainsLosses() error = %v", err)
 	}

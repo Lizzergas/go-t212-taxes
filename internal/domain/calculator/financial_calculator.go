@@ -37,7 +37,7 @@ func (fc *FinancialCalculator) CalculateYearlyReports(transactions []types.Trans
 	// Group transactions by year
 	yearlyTransactions := fc.groupTransactionsByYear(transactions)
 
-	var reports []types.YearlyReport
+	reports := make([]types.YearlyReport, 0, len(yearlyTransactions))
 	for year, yearTransactions := range yearlyTransactions {
 		report, err := fc.calculateYearlyReport(year, yearTransactions)
 		if err != nil {
@@ -203,7 +203,7 @@ func (fc *FinancialCalculator) CalculateCapitalGains(transactions []types.Transa
 
 	// Calculate gains/losses for each security using FIFO
 	for ticker, secTrans := range securityTransactions {
-		gains, losses, err := fc.calculateSecurityGainsLosses(ticker, secTrans)
+		gains, losses, err := fc.calculateSecurityGainsLosses(secTrans)
 		if err != nil {
 			return 0, 0, fmt.Errorf("failed to calculate gains/losses for %s: %w", ticker, err)
 		}
@@ -237,7 +237,7 @@ func (fc *FinancialCalculator) isBuyTransaction(action types.TransactionType) bo
 }
 
 // calculateSecurityGainsLosses calculates gains/losses for a specific security using FIFO
-func (fc *FinancialCalculator) calculateSecurityGainsLosses(ticker string, transactions []types.Transaction) (float64, float64, error) {
+func (fc *FinancialCalculator) calculateSecurityGainsLosses(transactions []types.Transaction) (float64, float64, error) {
 	// Sort transactions by time
 	sort.Slice(transactions, func(i, j int) bool {
 		return transactions[i].Time.Before(transactions[j].Time)
