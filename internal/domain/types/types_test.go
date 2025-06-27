@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"t212-taxes/internal/domain/types"
+	"github.com/Lizzergas/go-t212-taxes/internal/domain/types"
 )
 
 func TestTransactionTypes(t *testing.T) {

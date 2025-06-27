@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/viper"
 
-	"t212-taxes/internal/app/cli"
+	"github.com/Lizzergas/go-t212-taxes/internal/app/cli"
 )
 
 func main() {

@@ -13,10 +13,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"t212-taxes/internal/app/tui"
-	"t212-taxes/internal/domain/calculator"
-	"t212-taxes/internal/domain/parser"
-	"t212-taxes/internal/domain/types"
+	"github.com/Lizzergas/go-t212-taxes/internal/app/tui"
+	"github.com/Lizzergas/go-t212-taxes/internal/domain/calculator"
+	"github.com/Lizzergas/go-t212-taxes/internal/domain/parser"
+	"github.com/Lizzergas/go-t212-taxes/internal/domain/types"
 )
 
 // Constants for default values

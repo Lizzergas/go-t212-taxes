@@ -1,4 +1,4 @@
-module t212-taxes
+module github.com/Lizzergas/go-t212-taxes
 
 go 1.21
 

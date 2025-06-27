@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"t212-taxes/internal/domain/types"
+	"github.com/Lizzergas/go-t212-taxes/internal/domain/types"
 )
 
 // Constants

@@ -10,8 +10,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"t212-taxes/internal/domain/calculator"
-	"t212-taxes/internal/domain/types"
+	"github.com/Lizzergas/go-t212-taxes/internal/domain/calculator"
+	"github.com/Lizzergas/go-t212-taxes/internal/domain/types"
 )
 
 // Constants

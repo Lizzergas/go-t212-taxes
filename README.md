@@ -4,7 +4,7 @@
 > 
 > A comprehensive Go application for processing Trading 212 CSV exports and calculating tax obligations with modern tooling and beautiful UI.
 
-[![CI/CD](https://github.com/Lizzergas/go-t212-taxes/workflows/CI%2FCD%20Pipeline/badge.svg)](hhttps://github.com/Lizzergas/go-t212-taxes/actions)
+[![CI/CD](https://github.com/Lizzergas/go-t212-taxes/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/Lizzergas/go-t212-taxes/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Lizzergas/go-t212-taxes)](https://goreportcard.com/report/github.com/Lizzergas/go-t212-taxes)
 [![codecov](https://codecov.io/gh/Lizzergas/go-t212-taxes/branch/main/graph/badge.svg)](https://codecov.io/gh/Lizzergas/go-t212-taxes)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -51,42 +51,42 @@ Download the latest release for your platform:
 
 ```bash
 # macOS (Apple Silicon)
-curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/go-t212-taxes-darwin-arm64 -o t212-taxes
+curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/t212-taxes-darwin-arm64 -o t212-taxes
 chmod +x t212-taxes
 
 # macOS (Intel)
-curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/go-t212-taxes-darwin-amd64 -o t212-taxes
+curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/t212-taxes-darwin-amd64 -o t212-taxes
 chmod +x t212-taxes
 
 # Linux (x64)
-curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/go-t212-taxes-linux-amd64 -o t212-taxes
+curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/t212-taxes-linux-amd64 -o t212-taxes
 chmod +x t212-taxes
 
 # Windows (x64)
-curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/go-t212-taxes-windows-amd64.exe -o t212-taxes.exe
+curl -L https://github.com/Lizzergas/go-t212-taxes/releases/latest/download/t212-taxes-windows-amd64.exe -o t212-taxes.exe
 ```
 
 ### Go Install
 
 ```bash
-go install github.com/Lizzergas/go-t212-taxes/cmd/go-t212-taxes@latest
+go install github.com/Lizzergas/go-t212-taxes/cmd/t212-taxes@latest
 ```
 
 ### Docker
 
 ```bash
 # Run directly
-docker run --rm -v $(pwd)/exports:/app/data ghcr.io/Lizzergas/go-t212-taxes:latest analyze --dir /app/data
+docker run --rm -v $(pwd)/exports:/app/data ghcr.io/lizzergas/go-t212-taxes:latest analyze --dir /app/data
 
 # Interactive mode
-docker run --rm -it -v $(pwd)/exports:/app/data ghcr.io/Lizzergas/go-t212-taxes:latest
+docker run --rm -it -v $(pwd)/exports:/app/data ghcr.io/lizzergas/go-t212-taxes:latest
 ```
 
 ### From Source
 
 ```bash
 git clone https://github.com/Lizzergas/go-t212-taxes.git
-cd t212-taxes
+cd go-t212-taxes
 go build -o t212-taxes ./cmd/t212-taxes
 ```
 

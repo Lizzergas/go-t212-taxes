@@ -4,7 +4,7 @@ package calculator
 import (
 	"log"
 
-	"t212-taxes/internal/domain/types"
+	"github.com/Lizzergas/go-t212-taxes/internal/domain/types"
 )
 
 // Tax rate constants
