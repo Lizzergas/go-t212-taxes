@@ -25,6 +25,18 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Debug repository contents
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Repository contents:"
+        find . -name "*.go" | head -20
+        echo "cmd/t212-taxes directory contents:"
+        ls -la cmd/t212-taxes/
+        echo "Checking for getVersionInfo function:"
+        grep -n "getVersionInfo" cmd/t212-taxes/*.go || echo "getVersionInfo not found"
 
     - name: Set up Go
       uses: actions/setup-go@v4
@@ -41,19 +53,46 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
-    - name: Clean Go cache and install tools
+    - name: Clean Go cache and setup modules
       run: |
         # Clean Go cache to avoid compilation issues
         go clean -cache
+        go clean -modcache
+        
+        # Explicit module management
+        go mod download
+        go mod verify
+        go mod tidy
+        
+        # Verify main package can compile
+        echo "Testing main package compilation..."
+        go build -v ./cmd/t212-taxes
         
         # Install gosec for security scanning
         go install github.com/securego/gosec/v2/cmd/gosec@latest
         
-        # Verify gosec installation
+        # Verify installations
+        ./t212-taxes version || echo "Version command not yet working (this is expected)"
         gosec --version
+        
+        # Clean up test binary
+        rm -f t212-taxes
 
     - name: Make test script executable
       run: chmod +x scripts/test-all.sh
+
+    - name: Verify Go compilation
+      run: |
+        echo "Verifying all packages compile correctly..."
+        
+        # Try to compile the main package directly  
+        echo "Testing cmd/t212-taxes package compilation..."
+        go list -f '{{.GoFiles}}' ./cmd/t212-taxes
+        echo "Building cmd/t212-taxes package..."
+        go build -v ./cmd/t212-taxes
+        
+        echo "Running individual package tests..."
+        go test ./cmd/t212-taxes -v -run TestGetVersionInfo
 
     - name: Run comprehensive test suite
       id: test_suite
