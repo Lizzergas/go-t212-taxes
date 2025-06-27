@@ -17,6 +17,20 @@ make build-all
 ```
 
 ### Testing
+
+#### Quick Testing (Recommended)
+```bash
+# Run complete test suite - use this for comprehensive testing
+./scripts/test-all.sh
+
+# Quick development testing (faster feedback)
+./scripts/test-all.sh --quick
+
+# Verbose output for debugging
+./scripts/test-all.sh --verbose
+```
+
+#### Individual Testing Commands
 ```bash
 # Run all tests
 go test ./...
@@ -34,6 +48,9 @@ go test -bench=. ./...
 go test ./internal/domain/calculator/...
 go test ./internal/domain/parser/...
 ```
+
+📖 **See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation**
+📖 **See [CI/CD Integration](docs/CI_CD_INTEGRATION.md) for pipeline details**
 
 ### Code Quality
 ```bash

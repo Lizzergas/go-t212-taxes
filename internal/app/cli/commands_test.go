@@ -162,7 +162,7 @@ func TestRootCmd(t *testing.T) {
 	}
 
 	// Check that subcommands are registered
-	expectedCommands := []string{"process", "analyze", "validate", "income", "portfolio"}
+	expectedCommands := []string{"process", "analyze", "validate", "income", "portfolio", "version"}
 	commands := RootCmd.Commands()
 
 	if len(commands) != len(expectedCommands) {

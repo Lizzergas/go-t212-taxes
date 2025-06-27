@@ -140,10 +140,14 @@ Understanding the project structure will help you navigate and contribute effect
 
 4. **Test your changes**:
    ```bash
-   go test ./...
-   golangci-lint run --timeout=10m
-   gosec ./...
+   # Comprehensive test suite (recommended)
+   ./scripts/test-all.sh
+   
+   # Quick test during development
+   ./scripts/test-all.sh --quick
    ```
+
+📖 **See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation**
 
 ### Types of Contributions
 
@@ -170,6 +174,19 @@ Understanding the project structure will help you navigate and contribute effect
 
 ## 🧪 Testing
 
+### Quick Testing Commands
+
+```bash
+# Run complete test suite (recommended before submitting PR)
+./scripts/test-all.sh
+
+# Quick development testing (faster feedback)
+./scripts/test-all.sh --quick
+
+# Verbose output for debugging
+./scripts/test-all.sh --verbose
+```
+
 ### Test Categories
 
 1. **Unit Tests**: Test individual functions
@@ -186,6 +203,8 @@ Understanding the project structure will help you navigate and contribute effect
    ```bash
    go test ./test/
    ```
+
+📖 **See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation**
 
 ### Writing Tests
 

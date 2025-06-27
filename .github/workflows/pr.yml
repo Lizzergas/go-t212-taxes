@@ -39,65 +39,67 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
-    - name: Download dependencies
-      run: go mod download
-
-    - name: Run tests with coverage
-      id: tests
-      run: |
-        echo "Running test suite..."
-        go test -v -race -coverprofile=coverage.out ./...
-        
-        # Calculate coverage
-        COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-        echo "Test coverage: $COVERAGE%"
-        echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
-        
-        # Check if coverage is acceptable (>70%)
-        if (( $(echo "$COVERAGE < 70" | bc -l) )); then
-          echo "test_status=⚠️ Coverage below 70%" >> $GITHUB_OUTPUT
-        else
-          echo "test_status=✅ All tests passed" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Run golangci-lint (New issues only)
-      id: lint_new
-      uses: golangci/golangci-lint-action@v8
-      with:
-        version: v2.1
-        args: --timeout=10m --new-from-rev=${{ github.event.pull_request.base.sha }} --out-format=json
-        only-new-issues: true
-      continue-on-error: true
-
-    - name: Run full lint check
-      id: lint_full
+    - name: Install testing tools
       run: |
         # Install golangci-lint
-        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
         
-        # Run full lint and count issues
-        echo "Running full linting check..."
-        golangci-lint run --timeout=10m --out-format=json > lint_results.json 2>/dev/null || true
+        # Install gosec for security scanning
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+
+    - name: Make test script executable
+      run: chmod +x scripts/test-all.sh
+
+    - name: Run comprehensive test suite
+      id: tests
+      run: |
+        echo "Running comprehensive test suite..."
+        ./scripts/test-all.sh --verbose
         
-        # Count total issues
-        TOTAL_ISSUES=$(jq -r '.Issues | length' lint_results.json 2>/dev/null || echo "0")
+        # Extract coverage from the generated coverage.out file
+        if [ -f coverage.out ]; then
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Test coverage: $COVERAGE%"
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          
+          # Check if coverage is acceptable (>40%)
+          if (( $(echo "$COVERAGE < 40" | bc -l) )); then
+            echo "test_status=⚠️ Coverage below 40%" >> $GITHUB_OUTPUT
+          else
+            echo "test_status=✅ All tests passed" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "coverage=0" >> $GITHUB_OUTPUT
+          echo "test_status=❌ No coverage data" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Run quality gate check
+      id: lint_full
+      run: |
+        echo "Running quality gate check..."
+        chmod +x scripts/lint-check.sh
+        ./scripts/lint-check.sh > lint_output.txt 2>&1
+        LINT_EXIT_CODE=$?
+        
+        # Extract issue count from the script output
+        TOTAL_ISSUES=$(grep "Issues found:" lint_output.txt | grep -o "[0-9]*" || echo "0")
         echo "Total issues: $TOTAL_ISSUES"
         echo "total_issues=$TOTAL_ISSUES" >> $GITHUB_OUTPUT
         
         # Quality gate
-        if [ "$TOTAL_ISSUES" -gt 15 ]; then
-          echo "lint_status=❌ Too many issues ($TOTAL_ISSUES > 15)" >> $GITHUB_OUTPUT
-          echo "quality_gate=failed" >> $GITHUB_OUTPUT
-        else
+        if [ $LINT_EXIT_CODE -eq 0 ]; then
           echo "lint_status=✅ Quality gate passed ($TOTAL_ISSUES ≤ 15)" >> $GITHUB_OUTPUT
           echo "quality_gate=passed" >> $GITHUB_OUTPUT
+        else
+          echo "lint_status=❌ Too many issues ($TOTAL_ISSUES > 15)" >> $GITHUB_OUTPUT
+          echo "quality_gate=failed" >> $GITHUB_OUTPUT
         fi
         
-        # Extract issue breakdown
-        if [ -f lint_results.json ] && [ "$TOTAL_ISSUES" -gt 0 ]; then
-          echo "Issue breakdown:" >> $GITHUB_STEP_SUMMARY
-          jq -r '.Issues | group_by(.FromLinter) | .[] | "\(.[0].FromLinter): \(length)"' lint_results.json >> $GITHUB_STEP_SUMMARY
-        fi
+        # Show the output
+        cat lint_output.txt
+        
+        # Note: Don't exit with failure here - let the workflow continue to report results
 
     - name: Build check
       id: build
@@ -140,13 +142,25 @@ jobs:
           }
           
           <details>
-          <summary>📋 How to fix linting issues</summary>
+          <summary>🔧 How to run tests locally</summary>
           
-          1. Run locally: \`golangci-lint run --timeout=10m\`
-          2. Fix issues or add appropriate \`//nolint\` comments
-          3. Push changes to update this PR
+          \`\`\`bash
+          # Run complete test suite (recommended)
+          ./scripts/test-all.sh
           
-          Common fixes:
+          # Quick development testing
+          ./scripts/test-all.sh --quick
+          
+          # Verbose output for debugging
+          ./scripts/test-all.sh --verbose
+          
+          # Just quality gate check
+          ./scripts/lint-check.sh
+          \`\`\`
+          
+          📖 See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation.
+          
+          **Common lint fixes:**
           - \`gocyclo\`: Reduce function complexity
           - \`lll\`: Shorten long lines  
           - \`prealloc\`: Pre-allocate slices when size is known

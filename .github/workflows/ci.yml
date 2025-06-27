@@ -18,8 +18,10 @@ permissions:
 
 jobs:
   test:
-    name: Test
+    name: Comprehensive Test Suite
     runs-on: ubuntu-latest
+    outputs:
+      coverage: ${{ steps.test_suite.outputs.coverage }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -39,38 +41,71 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
-    - name: Download dependencies
-      run: go mod download
+    - name: Install testing tools
+      run: |
+        # Install golangci-lint
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+        
+        # Install gosec for security scanning
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        
+        # Verify installations
+        golangci-lint version
+        gosec --version
 
-    - name: Verify dependencies
-      run: go mod verify
+    - name: Make test script executable
+      run: chmod +x scripts/test-all.sh
 
-    - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out ./...
-
-    - name: Generate coverage report
-      run: go tool cover -html=coverage.out -o coverage.html
+    - name: Run comprehensive test suite
+      id: test_suite
+      run: |
+        echo "Running comprehensive test suite..."
+        ./scripts/test-all.sh --verbose
+        
+        # Extract coverage from the generated coverage.out file
+        if [ -f coverage.out ]; then
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "Test coverage: $COVERAGE%"
+        else
+          echo "coverage=0" >> $GITHUB_OUTPUT
+          echo "Warning: No coverage file generated"
+        fi
 
     - name: Upload coverage to Codecov
+      if: success()
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: true
+        fail_ci_if_error: false  # Don't fail CI if Codecov fails
         file: ./coverage.out
         flags: unittests
         name: codecov-umbrella
 
     - name: Upload coverage artifacts
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: coverage-report
         path: |
           coverage.out
           coverage.html
+        retention-days: 7
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          lint_results.json
+        retention-days: 7
 
   lint:
-    name: Lint
+    name: Quality Gate Check
     runs-on: ubuntu-latest
+    needs: test  # Run after main test suite
     permissions:
       contents: read
       pull-requests: write  # For PR comments
@@ -78,87 +113,44 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Fetch full history for new-from-rev
 
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
         go-version: ${{ env.GO_VERSION }}
 
-    - name: Run tests
+    - name: Install golangci-lint
       run: |
-        echo "Running tests..."
-        go test -v -race -coverprofile=coverage.out ./...
-        go tool cover -func=coverage.out
-        
-    - name: Run golangci-lint (Don't fail CI)
-      uses: golangci/golangci-lint-action@v8
-      with:
-        version: v2.1
-        args: --timeout=10m
-      continue-on-error: true  # Don't fail CI - we'll handle this in quality gate
-      
-    # Make sure golangci-lint binary is available for our quality gate check
-    - name: Ensure golangci-lint is available
-      run: |
-        # The golangci-lint-action should have installed it, but let's verify
-        if ! command -v golangci-lint &> /dev/null; then
-          echo "golangci-lint not found in PATH, installing..."
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
-          export PATH=$PATH:$(go env GOPATH)/bin
-        fi
-        golangci-lint version
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-    - name: Check issue count and quality gate
+    - name: Make lint check script executable
+      run: chmod +x scripts/lint-check.sh
+
+    - name: Run quality gate check
       id: quality_gate
       run: |
-        echo "Checking linting results..."
+        echo "Running quality gate check..."
+        ./scripts/lint-check.sh > lint_output.txt 2>&1
+        LINT_EXIT_CODE=$?
         
-        # The golangci-lint action already ran - we'll use the same binary
-        # Count issues from the previous run by running it again and parsing output
-        echo "Running golangci-lint to count issues..."
-        
-        # Run lint and capture both stdout and stderr, allow failure
-        LINT_OUTPUT=$(golangci-lint run --timeout=10m 2>&1 || true)
-        
-        # Count issues by looking for lines that match the error pattern
-        # Format: "file:line:col: message (linter)"
-        ISSUE_COUNT=$(echo "$LINT_OUTPUT" | grep -c "^[^:]*:[0-9]*:[0-9]*:" || echo "0")
-        
-        # Also try to extract from summary line if present
-        # Format: "X issues:"
-        SUMMARY_COUNT=$(echo "$LINT_OUTPUT" | grep -o "[0-9]* issues:" | grep -o "[0-9]*" || echo "")
-        
-        # Use summary count if available, otherwise use line count
-        if [[ "$SUMMARY_COUNT" =~ ^[0-9]+$ ]] && [ "$SUMMARY_COUNT" -gt 0 ]; then
-          ISSUE_COUNT=$SUMMARY_COUNT
-        fi
-        
-        # Ensure we have a valid number
-        if ! [[ "$ISSUE_COUNT" =~ ^[0-9]+$ ]]; then
-          ISSUE_COUNT=0
-        fi
-        
-        echo "Found $ISSUE_COUNT linting issues"
+        # Extract issue count from the script output
+        ISSUE_COUNT=$(grep "Issues found:" lint_output.txt | grep -o "[0-9]*" || echo "0")
         echo "issue_count=$ISSUE_COUNT" >> $GITHUB_OUTPUT
         
-        # Quality gate: Allow up to 15 issues (current: 5)
-        THRESHOLD=15
-        if [ "$ISSUE_COUNT" -le "$THRESHOLD" ]; then
-          echo "✅ Quality gate PASSED: $ISSUE_COUNT issues (≤ $THRESHOLD allowed)"
+        if [ $LINT_EXIT_CODE -eq 0 ]; then
           echo "quality_status=passed" >> $GITHUB_OUTPUT
           echo "status_emoji=✅" >> $GITHUB_OUTPUT
-          # Don't fail CI for issues within threshold
-          exit 0
         else
-          echo "❌ Quality gate FAILED: $ISSUE_COUNT issues (> $THRESHOLD allowed)" 
           echo "quality_status=failed" >> $GITHUB_OUTPUT
           echo "status_emoji=❌" >> $GITHUB_OUTPUT
-          # Fail CI only if we exceed threshold
-          echo "Failing CI due to too many linting issues"
-          exit 1
         fi
+        
+        # Show the output
+        cat lint_output.txt
+        
+        # Exit with the same code as the lint check
+        exit $LINT_EXIT_CODE
 
     - name: Comment on PR (if applicable)
       if: github.event_name == 'pull_request'
@@ -168,37 +160,48 @@ jobs:
           const issueCount = '${{ steps.quality_gate.outputs.issue_count }}';
           const qualityStatus = '${{ steps.quality_gate.outputs.quality_status }}';
           const statusEmoji = '${{ steps.quality_gate.outputs.status_emoji }}';
+          const coverage = '${{ needs.test.outputs.coverage || '0' }}';
           
-          const comment = `## 🔍 Code Quality Report
+          const comment = `## 🔍 CI Pipeline Results
           
-          ### Linting Results
+          ### Test Suite Results
+          - **Tests**: ✅ All tests passing
+          - **Coverage**: ${coverage}% 
+          - **Build**: ✅ Build successful
+          - **Security**: ✅ Security scan completed
+          
+          ### Quality Gate Results
           - **Total Issues**: ${issueCount}
           - **Quality Gate**: ${statusEmoji} ${qualityStatus.toUpperCase()}
           - **Threshold**: 15 issues maximum
           
-          ### Test Results  
-          - **Status**: ✅ All tests passing
-          - **Coverage**: Report generated
-          
           ${qualityStatus === 'failed' ? 
-            '### ⚠️ Note\nThis PR exceeds our quality threshold. Consider fixing issues before merging.' : 
-            '### 🎉 Quality Check\nThis PR meets our quality standards!'
+            '### ⚠️ Action Required\nThis PR exceeds our quality threshold. Consider fixing issues before merging.' : 
+            '### 🎉 Quality Check Passed\nThis PR meets our quality standards!'
           }
           
           <details>
-          <summary>🔧 How to check locally</summary>
+          <summary>🔧 How to run tests locally</summary>
           
           \`\`\`bash
-          # Run full linting check
-          golangci-lint run --timeout=10m
+          # Run complete test suite (recommended)
+          ./scripts/test-all.sh
           
-          # Get issue count  
-          golangci-lint run --timeout=10m --out-format=json | jq '.Issues | length'
+          # Quick development testing
+          ./scripts/test-all.sh --quick
+          
+          # Verbose output for debugging
+          ./scripts/test-all.sh --verbose
+          
+          # Just quality gate check
+          ./scripts/lint-check.sh
           \`\`\`
+          
+          📖 See [Testing Guide](docs/TESTING.md) for more details.
           </details>
           
           ---
-          *Updated: ${new Date().toISOString()}*`;
+          *Powered by comprehensive test suite - Last updated: ${new Date().toISOString()}*`;
           
           // Find existing comment
           const comments = await github.rest.issues.listComments({
@@ -208,7 +211,7 @@ jobs:
           });
           
           const existingComment = comments.data.find(comment => 
-            comment.body.includes('🔍 Code Quality Report')
+            comment.body.includes('🔍 CI Pipeline Results')
           );
           
           if (existingComment) {

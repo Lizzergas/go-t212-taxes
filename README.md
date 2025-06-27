@@ -263,6 +263,20 @@ go build -o t212-taxes ./cmd/t212-taxes
 ```
 
 ### Code Quality
+
+#### Quick Testing (Recommended)
+```bash
+# Run complete test suite (unit tests, linting, security, coverage, build verification)
+./scripts/test-all.sh
+
+# Quick development testing (skip security and coverage for speed)
+./scripts/test-all.sh --quick
+
+# Verbose output for debugging
+./scripts/test-all.sh --verbose
+```
+
+#### Individual Commands
 ```bash
 # Format code
 go fmt ./...
@@ -276,17 +290,15 @@ gosec ./...
 # Run benchmarks
 go test -bench=. ./...
 
-# Full CI pipeline locally
-make test
-make lint
-make security-scan
-
 # Quick quality gate check (mirrors CI)
 ./scripts/lint-check.sh
 
 # Full CI simulation (tests + quality gate)
 ./scripts/ci-test.sh
 ```
+
+📖 **See [Testing Guide](docs/TESTING.md) for comprehensive testing documentation**
+📖 **See [CI/CD Integration](docs/CI_CD_INTEGRATION.md) for pipeline details**
 
 #### Quality Gate
 This project uses a quality gate system in CI/CD:
