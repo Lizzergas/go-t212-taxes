@@ -34,11 +34,11 @@ builds:
 
 archives:
   - id: default
-    format: tar.gz
+    formats: [tar.gz]
     # Use zip for Windows
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
     name_template: >-
       {{ .ProjectName }}-
       {{- .Os }}-
@@ -55,7 +55,7 @@ checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
@@ -127,8 +127,8 @@ dockers:
     extra_files:
       - config.yaml
 
-# Homebrew tap - using main repository
-brews:
+# Homebrew cask - using main repository (recommended over brews for pre-compiled binaries)
+homebrew_casks:
   - name: t212-taxes
     repository:
       owner: Lizzergas
@@ -136,45 +136,43 @@ brews:
       branch: main
       token: "{{ .Env.GITHUB_TOKEN }}"  # Use standard GitHub token
     url_template: "https://github.com/Lizzergas/go-t212-taxes/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    download_strategy: CurlDownloadStrategy
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    directory: Formula  # Will create Formula/ directory in your repo
+    commit_msg_template: "Homebrew cask update for {{ .ProjectName }} version {{ .Tag }}"
+    directory: Casks  # Will create Casks/ directory in your repo
     homepage: "https://github.com/Lizzergas/go-t212-taxes"
     description: "A comprehensive tool for processing Trading 212 CSV exports and calculating tax obligations"
-    license: "MIT"
     skip_upload: auto
-    dependencies:
-      - name: go
-        type: optional
-    install: |
-      bin.install "t212-taxes"
-    test: |
-      system "#{bin}/t212-taxes", "version"
+    # For unsigned binaries, we need to disable quarantine
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/t212-taxes"]
+          end
 
-# Snapcraft (Ubuntu Store)
-snapcrafts:
-  - name: t212-taxes
-    publish: false # Set to true when ready to publish to Snap Store
-    summary: Trading 212 CSV processor and tax calculator
-    description: |
-      A comprehensive tool for processing Trading 212 CSV exports and calculating tax obligations.
-      
-      Features:
-      - Process multiple CSV files with yearly validation
-      - Calculate financial metrics (deposits, gains, dividends)
-      - Generate yearly and overall investment reports
-      - Beautiful terminal UI with detailed breakdowns
-    grade: stable
-    confinement: strict
-    license: MIT
-    base: core20
-    apps:
-      t212-taxes:
-        command: t212-taxes
-        plugs: ["home", "network"]
+# Snapcraft (Ubuntu Store) - DISABLED for now (requires snapcraft in CI)
+# snapcrafts:
+#   - name: t212-taxes
+#     publish: false # Set to true when ready to publish to Snap Store
+#     summary: Trading 212 CSV processor and tax calculator
+#     description: |
+#       A comprehensive tool for processing Trading 212 CSV exports and calculating tax obligations.
+#       
+#       Features:
+#       - Process multiple CSV files with yearly validation
+#       - Calculate financial metrics (deposits, gains, dividends)
+#       - Generate yearly and overall investment reports
+#       - Beautiful terminal UI with detailed breakdowns
+#     grade: stable
+#     confinement: strict
+#     license: MIT
+#     base: core20
+#     apps:
+#       t212-taxes:
+#         command: t212-taxes
+#         plugs: ["home", "network"]
 
 # Scoop (Windows package manager) - DISABLED for now
 # scoops:
