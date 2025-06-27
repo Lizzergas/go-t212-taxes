@@ -1,32 +1,7 @@
-# Build stage
-FROM golang:1.21-alpine AS builder
+# GoReleaser Dockerfile
+# This Dockerfile is designed to work with GoReleaser's build context
+# which includes only the pre-built binary and extra files
 
-# Build arguments for version information
-ARG VERSION=dev
-ARG COMMIT=unknown
-ARG DATE=unknown
-
-# Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata
-
-# Set working directory
-WORKDIR /app
-
-# Copy go mod files
-COPY go.mod go.sum ./
-
-# Download dependencies
-RUN go mod download
-
-# Copy source code
-COPY . .
-
-# Build the application with version information
-RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE} -X main.builtBy=docker" \
-    -o t212-taxes ./cmd/t212-taxes
-
-# Final stage
 FROM alpine:latest
 
 # Install runtime dependencies
@@ -39,15 +14,16 @@ RUN addgroup -g 1001 -S appgroup && \
 # Set working directory
 WORKDIR /app
 
-# Copy binary from builder stage
-COPY --from=builder /app/t212-taxes .
+# Copy pre-built binary from GoReleaser context
+COPY t212-taxes .
 
-# Copy configuration files
-COPY --from=builder /app/config.yaml .
+# Copy configuration files from GoReleaser context
+COPY config.yaml .
 
-# Create data directory
+# Create data directory and set permissions
 RUN mkdir -p /app/data && \
-    chown -R appuser:appgroup /app
+    chown -R appuser:appgroup /app && \
+    chmod +x /app/t212-taxes
 
 # Switch to non-root user
 USER appuser
