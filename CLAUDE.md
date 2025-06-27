@@ -26,6 +26,7 @@ make build-all
 The application automatically detects version information:
 - **With ldflags**: Uses build-time injected values (releases, make build)
 - **Without ldflags**: Dynamically detects from git (development, go build)
+- **All local builds**: Show "Built by: lizz"
 
 ```bash
 # Check version info

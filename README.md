@@ -272,7 +272,7 @@ go build -o t212-taxes ./cmd/t212-taxes
 The application automatically detects version information from git:
 - **Development builds**: Dynamic detection from git state
 - **Release builds**: Injected via ldflags during CI/CD
-- **Make builds**: Proper version info from git describe
+- **Local builds**: Proper version info from git describe, built by lizz
 
 ```bash
 # Check version (shows current git tag, commit, build time)

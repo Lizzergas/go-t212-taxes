@@ -13,7 +13,7 @@ COMMIT ?= $(shell git rev-parse HEAD)
 DATE ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 
 # Build flags
-LDFLAGS=-ldflags="-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE) -X main.builtBy=make"
+LDFLAGS=-ldflags="-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE) -X main.builtBy=lizz"
 
 # Color output
 RED=\033[0;31m
