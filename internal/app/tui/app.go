@@ -299,7 +299,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				if m.PortfolioCursor < maxPositions {
 					ticker := m.CurrentPortfolio.Positions[m.PortfolioCursor].Ticker
-					return m, m.openBrowser(ticker)
+					cmd := m.openBrowser(ticker)
+					return m, cmd
 				}
 			}
 		case "b":

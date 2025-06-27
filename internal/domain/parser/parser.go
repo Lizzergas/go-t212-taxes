@@ -234,45 +234,83 @@ func (p *CSVParser) validateHeader(header []string) error {
 
 // parseTransaction converts a CSV record to a Transaction
 func (p *CSVParser) parseTransaction(header []string, record []string) (*types.Transaction, error) {
-	// Handle severe field count mismatches (CSV corruption)
-	if len(record) != len(header) {
-		// If record is severely shorter or longer, skip it
-		if len(record) < len(header)/2 || len(record) > len(header)*2 {
-			return nil, fmt.Errorf("severe field count mismatch (skipping): expected %d, got %d", len(header), len(record))
-		}
-
-		// For minor mismatches, try to fix
-		if len(record) < len(header) {
-			// Pad with empty strings
-			for len(record) < len(header) {
-				record = append(record, "")
-			}
-		} else {
-			// Truncate extra fields
-			record = record[:len(header)]
-		}
+	// Handle field count mismatches
+	record, err := p.normalizeRecord(header, record)
+	if err != nil {
+		return nil, err
 	}
 
+	// Create field map
+	fieldMap := p.createFieldMap(header, record)
+
+	transaction := &types.Transaction{}
+
+	// Parse required fields
+	if err := p.parseRequiredFields(fieldMap, transaction); err != nil {
+		return nil, err
+	}
+
+	// Parse optional fields
+	p.parseOptionalStringFields(fieldMap, transaction)
+
+	if err := p.parseOptionalNumericFields(fieldMap, transaction); err != nil {
+		return nil, err
+	}
+
+	p.parseOptionalCurrencyFields(fieldMap, transaction)
+
+	return transaction, nil
+}
+
+// normalizeRecord handles field count mismatches between header and record
+func (p *CSVParser) normalizeRecord(header, record []string) ([]string, error) {
+	if len(record) == len(header) {
+		return record, nil
+	}
+
+	// If record is severely shorter or longer, skip it
+	if len(record) < len(header)/2 || len(record) > len(header)*2 {
+		return nil, fmt.Errorf("severe field count mismatch (skipping): expected %d, got %d", len(header), len(record))
+	}
+
+	// For minor mismatches, try to fix
+	if len(record) < len(header) {
+		// Pad with empty strings
+		for len(record) < len(header) {
+			record = append(record, "")
+		}
+	} else {
+		// Truncate extra fields
+		record = record[:len(header)]
+	}
+
+	return record, nil
+}
+
+// createFieldMap creates a map from header to record values
+func (p *CSVParser) createFieldMap(header, record []string) map[string]string {
 	fieldMap := make(map[string]string)
 	for i, field := range header {
 		fieldName := strings.TrimSpace(field)
 		fieldValue := strings.TrimSpace(record[i])
 		fieldMap[fieldName] = fieldValue
 	}
+	return fieldMap
+}
 
-	transaction := &types.Transaction{}
-
+// parseRequiredFields parses required action and time fields
+func (p *CSVParser) parseRequiredFields(fieldMap map[string]string, transaction *types.Transaction) error {
 	// Parse Action (required)
 	action := fieldMap["Action"]
 	if action == "" {
-		return nil, fmt.Errorf("missing action field")
+		return fmt.Errorf("missing action field")
 	}
 	transaction.Action = types.TransactionType(action)
 
 	// Parse Time (required)
 	timeStr := fieldMap["Time"]
 	if timeStr == "" {
-		return nil, fmt.Errorf("missing time field")
+		return fmt.Errorf("missing time field")
 	}
 
 	parsedTime, err := time.Parse("2006-01-02 15:04:05", timeStr)
@@ -280,104 +318,114 @@ func (p *CSVParser) parseTransaction(header []string, record []string) (*types.T
 		// Try alternative format
 		parsedTime, err = time.Parse("2006-01-02T15:04:05", timeStr)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse time %s: %w", timeStr, err)
+			return fmt.Errorf("failed to parse time %s: %w", timeStr, err)
 		}
 	}
 	transaction.Time = parsedTime
 
-	// Parse optional string fields
-	if isin := fieldMap["ISIN"]; isin != "" {
-		transaction.ISIN = &isin
-	}
-	if ticker := fieldMap["Ticker"]; ticker != "" {
-		transaction.Ticker = &ticker
-	}
-	if name := fieldMap["Name"]; name != "" {
-		transaction.Name = &name
-	}
-	if notes := fieldMap["Notes"]; notes != "" {
-		transaction.Notes = &notes
-	}
-	if id := fieldMap["ID"]; id != "" {
-		transaction.ID = &id
+	return nil
+}
+
+// parseOptionalStringFields parses optional string fields
+func (p *CSVParser) parseOptionalStringFields(fieldMap map[string]string, transaction *types.Transaction) {
+	stringFields := []struct {
+		fieldName string
+		target    **string
+	}{
+		{"ISIN", &transaction.ISIN},
+		{"Ticker", &transaction.Ticker},
+		{"Name", &transaction.Name},
+		{"Notes", &transaction.Notes},
+		{"ID", &transaction.ID},
 	}
 
-	// Parse optional numeric fields
-	if err := p.parseOptionalFloat(fieldMap, "No. of shares", &transaction.Shares); err != nil {
-		return nil, err
-	}
-	if err := p.parseOptionalFloat(fieldMap, "Price / share", &transaction.PricePerShare); err != nil {
-		return nil, err
-	}
-	if err := p.parseOptionalFloat(fieldMap, "Exchange rate", &transaction.ExchangeRate); err != nil {
-		return nil, err
-	}
-	// Result field may not exist in 22-column format
-	if _, exists := fieldMap["Result"]; exists {
-		if err := p.parseOptionalFloat(fieldMap, "Result", &transaction.Result); err != nil {
-			return nil, err
+	for _, field := range stringFields {
+		if value := fieldMap[field.fieldName]; value != "" {
+			*field.target = &value
 		}
 	}
-	if err := p.parseOptionalFloat(fieldMap, "Total", &transaction.Total); err != nil {
-		return nil, err
+}
+
+// parseOptionalNumericFields parses all optional numeric fields
+func (p *CSVParser) parseOptionalNumericFields(fieldMap map[string]string, transaction *types.Transaction) error {
+	// Standard numeric fields
+	numericFields := []struct {
+		fieldName string
+		target    **float64
+	}{
+		{"No. of shares", &transaction.Shares},
+		{"Price / share", &transaction.PricePerShare},
+		{"Exchange rate", &transaction.ExchangeRate},
+		{"Total", &transaction.Total},
+		{"Withholding tax", &transaction.WithholdingTax},
+		{"Charge amount", &transaction.ChargeAmount},
+		{"Deposit fee", &transaction.DepositFee},
+		{"Currency conversion fee", &transaction.CurrencyConversionFee},
 	}
-	if err := p.parseOptionalFloat(fieldMap, "Withholding tax", &transaction.WithholdingTax); err != nil {
-		return nil, err
-	}
-	if err := p.parseOptionalFloat(fieldMap, "Charge amount", &transaction.ChargeAmount); err != nil {
-		return nil, err
-	}
-	if err := p.parseOptionalFloat(fieldMap, "Deposit fee", &transaction.DepositFee); err != nil {
-		return nil, err
-	}
-	// Handle new format fields (may not exist in older CSV files)
-	if _, exists := fieldMap["Currency conversion from amount"]; exists {
-		if err := p.parseOptionalFloat(fieldMap, "Currency conversion from amount", &transaction.CurrencyConversionFromAmount); err != nil {
-			return nil, err
+
+	for _, field := range numericFields {
+		if err := p.parseOptionalFloat(fieldMap, field.fieldName, field.target); err != nil {
+			return err
 		}
 	}
-	if _, exists := fieldMap["Currency conversion to amount"]; exists {
-		if err := p.parseOptionalFloat(fieldMap, "Currency conversion to amount", &transaction.CurrencyConversionToAmount); err != nil {
-			return nil, err
+
+	// Conditional fields that may not exist in older formats
+	conditionalFields := []struct {
+		fieldName string
+		target    **float64
+	}{
+		{"Result", &transaction.Result},
+		{"Currency conversion from amount", &transaction.CurrencyConversionFromAmount},
+		{"Currency conversion to amount", &transaction.CurrencyConversionToAmount},
+	}
+
+	for _, field := range conditionalFields {
+		if _, exists := fieldMap[field.fieldName]; exists {
+			if err := p.parseOptionalFloat(fieldMap, field.fieldName, field.target); err != nil {
+				return err
+			}
 		}
 	}
-	if err := p.parseOptionalFloat(fieldMap, "Currency conversion fee", &transaction.CurrencyConversionFee); err != nil {
-		return nil, err
+
+	return nil
+}
+
+// parseOptionalCurrencyFields parses all optional currency fields
+func (p *CSVParser) parseOptionalCurrencyFields(fieldMap map[string]string, transaction *types.Transaction) {
+	// Standard currency fields
+	currencyFields := []struct {
+		fieldName string
+		target    **string
+	}{
+		{"Currency (Price / share)", &transaction.CurrencyPricePerShare},
+		{"Currency (Total)", &transaction.CurrencyTotal},
+		{"Currency (Withholding tax)", &transaction.CurrencyWithholdingTax},
+		{"Currency (Charge amount)", &transaction.CurrencyChargeAmount},
+		{"Currency (Deposit fee)", &transaction.CurrencyDepositFee},
 	}
 
-	// Parse optional currency fields
-	if curr := fieldMap["Currency (Price / share)"]; curr != "" {
-		transaction.CurrencyPricePerShare = &curr
-	}
-	// Currency (Result) field may not exist in 22-column format
-	if curr, exists := fieldMap["Currency (Result)"]; exists && curr != "" {
-		transaction.CurrencyResult = &curr
-	}
-	if curr := fieldMap["Currency (Total)"]; curr != "" {
-		transaction.CurrencyTotal = &curr
-	}
-	if curr := fieldMap["Currency (Withholding tax)"]; curr != "" {
-		transaction.CurrencyWithholdingTax = &curr
-	}
-	if curr := fieldMap["Currency (Charge amount)"]; curr != "" {
-		transaction.CurrencyChargeAmount = &curr
-	}
-	if curr := fieldMap["Currency (Deposit fee)"]; curr != "" {
-		transaction.CurrencyDepositFee = &curr
+	for _, field := range currencyFields {
+		if curr := fieldMap[field.fieldName]; curr != "" {
+			*field.target = &curr
+		}
 	}
 
-	// Handle new format fields (may not exist in older CSV files)
-	if curr, exists := fieldMap["Currency (Currency conversion from amount)"]; exists && curr != "" {
-		transaction.CurrencyCurrencyConversionFromAmount = &curr
-	}
-	if curr, exists := fieldMap["Currency (Currency conversion to amount)"]; exists && curr != "" {
-		transaction.CurrencyCurrencyConversionToAmount = &curr
-	}
-	if curr, exists := fieldMap["Currency (Currency conversion fee)"]; exists && curr != "" {
-		transaction.CurrencyCurrencyConversionFee = &curr
+	// Conditional currency fields that may not exist in older formats
+	conditionalCurrencyFields := []struct {
+		fieldName string
+		target    **string
+	}{
+		{"Currency (Result)", &transaction.CurrencyResult},
+		{"Currency (Currency conversion from amount)", &transaction.CurrencyCurrencyConversionFromAmount},
+		{"Currency (Currency conversion to amount)", &transaction.CurrencyCurrencyConversionToAmount},
+		{"Currency (Currency conversion fee)", &transaction.CurrencyCurrencyConversionFee},
 	}
 
-	return transaction, nil
+	for _, field := range conditionalCurrencyFields {
+		if curr, exists := fieldMap[field.fieldName]; exists && curr != "" {
+			*field.target = &curr
+		}
+	}
 }
 
 // parseOptionalFloat parses a float field if it exists and is not empty

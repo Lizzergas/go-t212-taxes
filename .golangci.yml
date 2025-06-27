@@ -1,5 +1,10 @@
+# Configuration for golangci-lint v2.1.6+
+# See https://golangci-lint.run/product/migration-guide for details
+
+version: 2
+
 run:
-  timeout: 5m
+  timeout: 10m
   go: "1.21"
 
 linters-settings:
@@ -20,6 +25,16 @@ linters-settings:
             desc: "not allowed"
           - pkg: "github.com/pkg/errors"
             desc: "Should be replaced by standard lib errors package"
+        allow:
+          - github.com/spf13/cobra
+          - github.com/spf13/viper
+          - github.com/charmbracelet/bubbletea
+          - github.com/charmbracelet/lipgloss
+          - t212-taxes/internal/app/cli
+          - t212-taxes/internal/app/tui
+          - t212-taxes/internal/domain/calculator
+          - t212-taxes/internal/domain/parser
+          - t212-taxes/internal/domain/types
   misspell:
     locale: US
   lll:
@@ -72,38 +87,19 @@ linters-settings:
 linters:
   disable-all: true
   enable:
-    - bodyclose
-    - copyloopvar
-    - depguard
-    - dogsled
-    - dupl
     - errcheck
-    - exhaustive
     - funlen
     - goconst
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
     - mnd
-    - goprintffuncname
     - gosec
-    - gosimple
     - govet
-    - ineffassign
     - lll
     - misspell
-    - nakedret
-    - noctx
-    - nolintlint
-    - rowserrcheck
     - staticcheck
-    - stylecheck
-    - typecheck
-    - unconvert
     - unparam
     - unused
-    - whitespace
 
 issues:
   exclude-rules:

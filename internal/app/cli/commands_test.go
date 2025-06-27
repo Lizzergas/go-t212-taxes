@@ -29,7 +29,7 @@ func TestGetCSVFiles(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		f.Close() //nolint:errcheck
+		_ = f.Close()
 	}
 
 	tests := []struct {

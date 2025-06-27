@@ -8,6 +8,11 @@ import (
 	"t212-taxes/internal/domain/types"
 )
 
+const (
+	// MinSharesThreshold is the minimum shares to consider a position significant
+	MinSharesThreshold = 0.001
+)
+
 // PortfolioCalculator calculates portfolio positions and summaries
 type PortfolioCalculator struct {
 	baseCurrency string
@@ -63,146 +68,201 @@ func (pc *PortfolioCalculator) extractYears(transactions []types.Transaction) []
 
 // CalculateEndOfYearPortfolio calculates the portfolio state at the end of a given year
 func (pc *PortfolioCalculator) CalculateEndOfYearPortfolio(transactions []types.Transaction, year int) *types.PortfolioSummary {
-	// Filter transactions up to end of year
 	endOfYear := time.Date(year, 12, 31, 23, 59, 59, 0, time.UTC)
-	var relevantTransactions []types.Transaction
+	relevantTransactions := pc.filterTransactionsUpToDate(transactions, endOfYear)
 
-	for _, tx := range transactions {
-		if tx.Time.Before(endOfYear) || tx.Time.Equal(endOfYear) {
-			relevantTransactions = append(relevantTransactions, tx)
-		}
-	}
-
-	// Build positions map and track last prices
+	// Process transactions to build positions and calculate metrics
 	positions := make(map[string]*types.PortfolioPosition)
 	lastPrices := make(map[string]*PriceInfo)
+	yearlyMetrics := pc.calculateYearlyMetrics(relevantTransactions, year)
 
-	// Track yearly metrics
-	var yearlyDeposits, yearlyDividends, yearlyInterest float64
-
-	for _, tx := range relevantTransactions {
-		// Handle yearly metrics (only for the specific year)
-		if tx.Time.Year() == year {
-			switch {
-			case tx.Action == types.TransactionTypeDeposit:
-				if tx.Total != nil {
-					amount := pc.convertToBaseCurrency(*tx.Total, tx.CurrencyTotal, tx.ExchangeRate)
-					yearlyDeposits += amount
-				}
-			case strings.Contains(strings.ToLower(string(tx.Action)), "dividend"):
-				convertedAmount := pc.extractTransactionAmount(tx)
-				yearlyDividends += convertedAmount
-			case strings.Contains(strings.ToLower(string(tx.Action)), "interest"):
-				convertedAmount := pc.extractTransactionAmount(tx)
-				yearlyInterest += convertedAmount
-			}
-		}
-
-		// Handle trade transactions for portfolio positions
-		if pc.isTradeTransaction(tx) && tx.Ticker != nil && tx.ISIN != nil {
-			ticker := *tx.Ticker
-			position, exists := positions[ticker]
-
-			if !exists {
-				position = &types.PortfolioPosition{
-					Ticker:           ticker,
-					ISIN:             *tx.ISIN,
-					Name:             pc.getSecurityName(tx),
-					Shares:           0,
-					TotalCost:        0,
-					Currency:         pc.baseCurrency,
-					TransactionCount: 0,
-				}
-				positions[ticker] = position
-			}
-
-			// Update position based on transaction type
-			if pc.isBuyTransaction(tx) {
-				pc.handleBuyTransaction(position, tx)
-			} else if pc.isSellTransaction(tx) {
-				pc.handleSellTransaction(position, tx)
-			}
-
-			// Track last price information
-			if tx.PricePerShare != nil && *tx.PricePerShare > 0 {
-				priceInBaseCurrency := pc.convertToBaseCurrency(*tx.PricePerShare, tx.CurrencyPricePerShare, tx.ExchangeRate)
-
-				lastPrices[ticker] = &PriceInfo{
-					Price:            priceInBaseCurrency,
-					Date:             tx.Time,
-					Currency:         pc.baseCurrency,
-					OriginalPrice:    *tx.PricePerShare,
-					OriginalCurrency: pc.safeString(tx.CurrencyPricePerShare),
-				}
-			}
-		}
-	}
-
-	// Convert positions map to slice and filter out zero positions
-	var finalPositions []types.PortfolioPosition
-	var totalShares, totalInvested, totalMarketValue float64
-
-	for _, position := range positions {
-		if position.Shares > 0.001 { // Filter out tiny remaining positions
-			if position.Shares > 0 {
-				position.AverageCost = position.TotalCost / position.Shares
-			}
-
-			// Add market pricing information
-			if priceInfo, hasPriceInfo := lastPrices[position.Ticker]; hasPriceInfo {
-				position.LastPrice = priceInfo.Price
-				position.LastPriceDate = priceInfo.Date
-				position.LastPriceCurrency = priceInfo.Currency
-				position.MarketValue = position.Shares * priceInfo.Price
-				position.UnrealizedGainLoss = position.MarketValue - position.TotalCost
-
-				if position.TotalCost > 0 {
-					position.UnrealizedGainLossPercent = (position.UnrealizedGainLoss / position.TotalCost) * PercentMultiplier
-				}
-			} else {
-				// No price information available - use cost basis
-				position.LastPrice = position.AverageCost
-				position.LastPriceDate = position.LastPurchase
-				position.LastPriceCurrency = position.Currency
-				position.MarketValue = position.TotalCost
-				position.UnrealizedGainLoss = 0
-				position.UnrealizedGainLossPercent = 0
-			}
-
-			finalPositions = append(finalPositions, *position)
-			totalShares += position.Shares
-			totalInvested += position.TotalCost
-			totalMarketValue += position.MarketValue
-		}
-	}
-
-	// Sort finalPositions by MarketValue in descending order
-	sort.Slice(finalPositions, func(i, j int) bool {
-		return finalPositions[i].MarketValue > finalPositions[j].MarketValue
-	})
-
-	// Calculate total unrealized gains/losses
-	totalUnrealizedGainLoss := totalMarketValue - totalInvested
-	var totalUnrealizedGainLossPercent float64
-	if totalInvested > 0 {
-		totalUnrealizedGainLossPercent = (totalUnrealizedGainLoss / totalInvested) * PercentMultiplier
-	}
+	pc.processTransactionsForPositions(relevantTransactions, positions, lastPrices)
+	finalPositions, totals := pc.buildFinalPositions(positions, lastPrices)
 
 	return &types.PortfolioSummary{
 		Year:                           year,
 		AsOfDate:                       endOfYear,
 		Positions:                      finalPositions,
 		TotalPositions:                 len(finalPositions),
-		TotalShares:                    totalShares,
-		TotalInvested:                  totalInvested,
-		TotalMarketValue:               totalMarketValue,
-		TotalUnrealizedGainLoss:        totalUnrealizedGainLoss,
-		TotalUnrealizedGainLossPercent: totalUnrealizedGainLossPercent,
+		TotalShares:                    totals.TotalShares,
+		TotalInvested:                  totals.TotalInvested,
+		TotalMarketValue:               totals.TotalMarketValue,
+		TotalUnrealizedGainLoss:        totals.TotalMarketValue - totals.TotalInvested,
+		TotalUnrealizedGainLossPercent: pc.calculatePercentage(totals.TotalMarketValue-totals.TotalInvested, totals.TotalInvested),
 		Currency:                       pc.baseCurrency,
-		YearlyDeposits:                 yearlyDeposits,
-		YearlyDividends:                yearlyDividends,
-		YearlyInterest:                 yearlyInterest,
+		YearlyDeposits:                 yearlyMetrics.Deposits,
+		YearlyDividends:                yearlyMetrics.Dividends,
+		YearlyInterest:                 yearlyMetrics.Interest,
 	}
+}
+
+// filterTransactionsUpToDate filters transactions up to the specified date
+func (pc *PortfolioCalculator) filterTransactionsUpToDate(transactions []types.Transaction, endDate time.Time) []types.Transaction {
+	var filtered []types.Transaction
+	for _, tx := range transactions {
+		if tx.Time.Before(endDate) || tx.Time.Equal(endDate) {
+			filtered = append(filtered, tx)
+		}
+	}
+	return filtered
+}
+
+// YearlyMetrics holds yearly metric calculations
+type YearlyMetrics struct {
+	Deposits  float64
+	Dividends float64
+	Interest  float64
+}
+
+// calculateYearlyMetrics calculates deposits, dividends, and interest for a specific year
+func (pc *PortfolioCalculator) calculateYearlyMetrics(transactions []types.Transaction, year int) *YearlyMetrics {
+	metrics := &YearlyMetrics{}
+
+	for _, tx := range transactions {
+		if tx.Time.Year() != year {
+			continue
+		}
+
+		switch {
+		case tx.Action == types.TransactionTypeDeposit:
+			if tx.Total != nil {
+				amount := pc.convertToBaseCurrency(*tx.Total, tx.CurrencyTotal, tx.ExchangeRate)
+				metrics.Deposits += amount
+			}
+		case strings.Contains(strings.ToLower(string(tx.Action)), "dividend"):
+			convertedAmount := pc.extractTransactionAmount(tx)
+			metrics.Dividends += convertedAmount
+		case strings.Contains(strings.ToLower(string(tx.Action)), "interest"):
+			convertedAmount := pc.extractTransactionAmount(tx)
+			metrics.Interest += convertedAmount
+		}
+	}
+
+	return metrics
+}
+
+// processTransactionsForPositions processes trade transactions to build positions and track prices
+func (pc *PortfolioCalculator) processTransactionsForPositions(transactions []types.Transaction, positions map[string]*types.PortfolioPosition, lastPrices map[string]*PriceInfo) {
+	for _, tx := range transactions {
+		if !pc.isTradeTransaction(tx) || tx.Ticker == nil || tx.ISIN == nil {
+			continue
+		}
+
+		ticker := *tx.Ticker
+		position := pc.getOrCreatePosition(positions, ticker, tx)
+
+		// Update position based on transaction type
+		if pc.isBuyTransaction(tx) {
+			pc.handleBuyTransaction(position, tx)
+		} else if pc.isSellTransaction(tx) {
+			pc.handleSellTransaction(position, tx)
+		}
+
+		// Track last price information
+		pc.updateLastPrice(lastPrices, ticker, tx)
+	}
+}
+
+// getOrCreatePosition gets existing position or creates a new one
+func (pc *PortfolioCalculator) getOrCreatePosition(positions map[string]*types.PortfolioPosition, ticker string, tx types.Transaction) *types.PortfolioPosition {
+	position, exists := positions[ticker]
+	if !exists {
+		position = &types.PortfolioPosition{
+			Ticker:           ticker,
+			ISIN:             *tx.ISIN,
+			Name:             pc.getSecurityName(tx),
+			Shares:           0,
+			TotalCost:        0,
+			Currency:         pc.baseCurrency,
+			TransactionCount: 0,
+		}
+		positions[ticker] = position
+	}
+	return position
+}
+
+// updateLastPrice updates the last price information for a ticker
+func (pc *PortfolioCalculator) updateLastPrice(lastPrices map[string]*PriceInfo, ticker string, tx types.Transaction) {
+	if tx.PricePerShare != nil && *tx.PricePerShare > 0 {
+		priceInBaseCurrency := pc.convertToBaseCurrency(*tx.PricePerShare, tx.CurrencyPricePerShare, tx.ExchangeRate)
+
+		lastPrices[ticker] = &PriceInfo{
+			Price:            priceInBaseCurrency,
+			Date:             tx.Time,
+			Currency:         pc.baseCurrency,
+			OriginalPrice:    *tx.PricePerShare,
+			OriginalCurrency: pc.safeString(tx.CurrencyPricePerShare),
+		}
+	}
+}
+
+// PositionTotals holds aggregated position totals
+type PositionTotals struct {
+	TotalShares      float64
+	TotalInvested    float64
+	TotalMarketValue float64
+}
+
+// buildFinalPositions converts positions map to sorted slice and calculates totals
+func (pc *PortfolioCalculator) buildFinalPositions(positions map[string]*types.PortfolioPosition, lastPrices map[string]*PriceInfo) ([]types.PortfolioPosition, *PositionTotals) {
+	var finalPositions []types.PortfolioPosition
+	totals := &PositionTotals{}
+
+	for _, position := range positions {
+		if position.Shares <= MinSharesThreshold { // Filter out tiny remaining positions
+			continue
+		}
+
+		pc.finalizePosition(position, lastPrices)
+
+		finalPositions = append(finalPositions, *position)
+		totals.TotalShares += position.Shares
+		totals.TotalInvested += position.TotalCost
+		totals.TotalMarketValue += position.MarketValue
+	}
+
+	// Sort by market value in descending order
+	sort.Slice(finalPositions, func(i, j int) bool {
+		return finalPositions[i].MarketValue > finalPositions[j].MarketValue
+	})
+
+	return finalPositions, totals
+}
+
+// finalizePosition calculates final position metrics including market value and P&L
+func (pc *PortfolioCalculator) finalizePosition(position *types.PortfolioPosition, lastPrices map[string]*PriceInfo) {
+	if position.Shares > 0 {
+		position.AverageCost = position.TotalCost / position.Shares
+	}
+
+	// Add market pricing information
+	if priceInfo, hasPriceInfo := lastPrices[position.Ticker]; hasPriceInfo {
+		position.LastPrice = priceInfo.Price
+		position.LastPriceDate = priceInfo.Date
+		position.LastPriceCurrency = priceInfo.Currency
+		position.MarketValue = position.Shares * priceInfo.Price
+		position.UnrealizedGainLoss = position.MarketValue - position.TotalCost
+
+		if position.TotalCost > 0 {
+			position.UnrealizedGainLossPercent = (position.UnrealizedGainLoss / position.TotalCost) * PercentMultiplier
+		}
+	} else {
+		// No price information available - use cost basis
+		position.LastPrice = position.AverageCost
+		position.LastPriceDate = position.LastPurchase
+		position.LastPriceCurrency = position.Currency
+		position.MarketValue = position.TotalCost
+		position.UnrealizedGainLoss = 0
+		position.UnrealizedGainLossPercent = 0
+	}
+}
+
+// calculatePercentage calculates percentage safely, avoiding division by zero
+func (pc *PortfolioCalculator) calculatePercentage(numerator, denominator float64) float64 {
+	if denominator > 0 {
+		return (numerator / denominator) * PercentMultiplier
+	}
+	return 0
 }
 
 // PriceInfo holds price information for a security

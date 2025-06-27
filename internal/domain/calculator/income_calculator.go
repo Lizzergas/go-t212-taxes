@@ -118,9 +118,9 @@ func (ic *IncomeCalculator) extractDividendRecords(transactions []types.Transact
 
 		// Convert to base currency if needed
 		if record.Currency != ic.baseCurrency && record.ExchangeRate > 0 {
-			record.Amount = record.Amount / record.ExchangeRate
-			record.WithholdingTax = record.WithholdingTax / record.ExchangeRate
-			record.NetAmount = record.NetAmount / record.ExchangeRate
+					record.Amount /= record.ExchangeRate
+		record.WithholdingTax /= record.ExchangeRate
+		record.NetAmount /= record.ExchangeRate
 			record.Currency = ic.baseCurrency
 		}
 
@@ -177,7 +177,7 @@ func (ic *IncomeCalculator) extractInterestRecords(transactions []types.Transact
 
 		// Convert to base currency if needed
 		if record.Currency != ic.baseCurrency && record.ExchangeRate > 0 {
-			record.Amount = record.Amount / record.ExchangeRate
+			record.Amount /= record.ExchangeRate
 			record.Currency = ic.baseCurrency
 		}
 

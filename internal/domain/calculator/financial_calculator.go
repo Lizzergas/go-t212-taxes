@@ -121,6 +121,15 @@ func (fc *FinancialCalculator) calculateYearlyReport(year int, transactions []ty
 				report.TotalDeposits += amount
 			}
 
+		case types.TransactionTypeMarketSell, types.TransactionTypeLimitSell, types.TransactionTypeStopSell:
+			// For sells, we need to calculate capital gains
+			// This is a simplified approach - in reality, we'd need to track purchase prices
+			if transaction.Result != nil {
+				amount := fc.convertToBaseCurrency(*transaction.Result, transaction.CurrencyResult, transaction.ExchangeRate)
+				if amount > 0 {
+					report.CapitalGains += amount
+				}
+			}
 		default:
 			// Check for dividend transactions (handle different formats)
 			actionStr := string(transaction.Action)
@@ -141,16 +150,6 @@ func (fc *FinancialCalculator) calculateYearlyReport(year int, transactions []ty
 				} else if transaction.Total != nil {
 					amount := fc.convertToBaseCurrency(*transaction.Total, transaction.CurrencyTotal, transaction.ExchangeRate)
 					report.Interest += amount
-				}
-			}
-
-		case types.TransactionTypeMarketSell, types.TransactionTypeLimitSell, types.TransactionTypeStopSell:
-			// For sells, we need to calculate capital gains
-			// This is a simplified approach - in reality, we'd need to track purchase prices
-			if transaction.Result != nil {
-				amount := fc.convertToBaseCurrency(*transaction.Result, transaction.CurrencyResult, transaction.ExchangeRate)
-				if amount > 0 {
-					report.CapitalGains += amount
 				}
 			}
 		}
