@@ -1,4 +1,4 @@
-# Configuration for golangci-lint v2.1.6+
+# Configuration for golangci-lint v2+
 # See https://golangci-lint.run/product/migration-guide for details
 
 version: 2
@@ -39,8 +39,6 @@ linters-settings:
     locale: US
   lll:
     line-length: 140
-  goimports:
-    local-prefixes: github.com/Lizzergas/go-t212-taxes
   gocritic:
     enabled-tags:
       - diagnostic
@@ -57,11 +55,6 @@ linters-settings:
   funlen:
     lines: 120
     statements: 60
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(github.com/Lizzergas/go-t212-taxes)
   nestif:
     min-complexity: 5
   prealloc:
@@ -74,15 +67,13 @@ linters-settings:
     require-explanation: false
     require-specific: false
   mnd:
-    settings:
-      mnd:
-        checks:
-          - argument
-          - case
-          - condition
-          - operation
-          - return
-          - assign
+    checks:
+      - argument
+      - case
+      - condition
+      - operation
+      - return
+      - assign
 
 linters:
   disable-all: true
@@ -100,6 +91,10 @@ linters:
     - staticcheck
     - unparam
     - unused
+    - nestif
+    - prealloc
+    - nolintlint
+    - copyloopvar
 
 issues:
   exclude-rules:
