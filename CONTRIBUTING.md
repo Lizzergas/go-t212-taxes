@@ -93,6 +93,9 @@ go build -o t212-taxes ./cmd/t212-taxes
 
 # Quick quality gate check (mirrors CI)
 ./scripts/lint-check.sh
+
+# Full CI simulation (tests + quality gate)
+./scripts/ci-test.sh
 ```
 
 ### Project Structure

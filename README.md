@@ -269,6 +269,9 @@ make security-scan
 
 # Quick quality gate check (mirrors CI)
 ./scripts/lint-check.sh
+
+# Full CI simulation (tests + quality gate)
+./scripts/ci-test.sh
 ```
 
 #### Quality Gate
