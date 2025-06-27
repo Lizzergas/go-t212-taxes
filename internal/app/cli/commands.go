@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -96,12 +97,38 @@ Examples:
 	Run: generateIncomeReport,
 }
 
+// portfolioCmd represents the portfolio command
+var portfolioCmd = &cobra.Command{
+	Use:   "portfolio",
+	Short: "Generate portfolio valuation reports across years",
+	Long: `Generate comprehensive portfolio valuation reports showing holdings and market values across years.
+
+Features:
+- End-of-year portfolio positions for each year
+- Market values based on last transaction prices
+- Unrealized gains/losses calculations
+- Total portfolio value tracking
+- Year-over-year portfolio growth analysis
+
+Examples:
+  # Generate portfolio valuation report for all CSV files
+  t212-taxes portfolio --dir ./exports
+
+  # Generate portfolio report with JSON output
+  t212-taxes portfolio --dir ./exports --format json --output portfolio_report.json
+
+  # Show specific number of holdings per year
+  t212-taxes portfolio --dir ./exports --max-holdings 15`,
+	Run: generatePortfolioReport,
+}
+
 func init() {
 	// Add subcommands
 	RootCmd.AddCommand(processCmd)
 	RootCmd.AddCommand(analyzeCmd)
 	RootCmd.AddCommand(validateCmd)
 	RootCmd.AddCommand(incomeCmd)
+	RootCmd.AddCommand(portfolioCmd)
 
 	// Global flags
 	RootCmd.PersistentFlags().String("currency", "EUR", "Base currency for calculations")
@@ -128,6 +155,14 @@ func init() {
 	incomeCmd.Flags().String("output", "", "Output file for results (JSON format)")
 	incomeCmd.Flags().String("format", "table", "Output format (table, json)")
 	incomeCmd.Flags().Int("top-payers", 10, "Number of top dividend payers to display")
+
+	// Portfolio command flags
+	portfolioCmd.Flags().String("dir", "", "Directory containing CSV files")
+	portfolioCmd.Flags().StringSlice("files", []string{}, "Comma-separated list of CSV files")
+	portfolioCmd.Flags().String("output", "", "Output file path")
+	portfolioCmd.Flags().String("format", "table", "Output format (table, json)")
+	portfolioCmd.Flags().Int("max-holdings", 10, "Maximum number of holdings to display per year")
+	portfolioCmd.Flags().Bool("show-all", false, "Show all positions (ignores max-holdings limit)")
 
 	// Bind flags to viper
 	viper.BindPFlag("currency", RootCmd.PersistentFlags().Lookup("currency"))
@@ -211,8 +246,23 @@ func analyzeFiles(cmd *cobra.Command, args []string) {
 
 	overallReport := finCalc.CalculateOverallReport(yearlyReports)
 
-	// Show TUI with reports and transactions for portfolio functionality
-	app := tui.NewAppWithPortfolioData(yearlyReports, overallReport, result.Transactions)
+	// Calculate portfolio valuation report
+	portfolioReport, err := finCalc.CalculatePortfolioReports(files)
+	if err != nil {
+		log.Printf("Warning: Could not calculate portfolio report: %v", err)
+		portfolioReport = nil
+	}
+
+	// Calculate income report
+	incomeCalc := calculator.NewIncomeCalculator(currency)
+	incomeReport, err := incomeCalc.CalculateIncomeReport(result.Transactions)
+	if err != nil {
+		log.Printf("Warning: Could not calculate income report: %v", err)
+		incomeReport = nil
+	}
+
+	// Show TUI with all available data
+	app := tui.NewAppWithAllData(yearlyReports, overallReport, result.Transactions, portfolioReport, incomeReport)
 	if err := app.Run(); err != nil {
 		log.Fatalf("Failed to start TUI: %v", err)
 	}
@@ -567,4 +617,139 @@ func saveIncomeReportToFile(report *types.IncomeReport, filename, format string)
 	}
 
 	return nil
+}
+
+// generatePortfolioReport handles the portfolio command
+func generatePortfolioReport(cmd *cobra.Command, args []string) {
+	dir, _ := cmd.Flags().GetString("dir")
+	format, _ := cmd.Flags().GetString("format")
+	maxHoldings, _ := cmd.Flags().GetInt("max-holdings")
+	showAll, _ := cmd.Flags().GetBool("show-all")
+
+	if dir == "" {
+		log.Fatal("Directory must be specified")
+	}
+
+	// Initialize calculator
+	currency := viper.GetString("currency")
+	finCalc := calculator.NewFinancialCalculator(currency)
+
+	// Parse files
+	fmt.Printf("Generating portfolio valuation report for %s...\n", dir)
+	files, err := filepath.Glob(filepath.Join(dir, "*.csv"))
+	if err != nil {
+		log.Fatalf("Error globbing CSV files: %v", err)
+	}
+
+	if len(files) == 0 {
+		log.Fatal("No CSV files found")
+	}
+
+	// Calculate portfolio reports
+	portfolioReport, err := finCalc.CalculatePortfolioReports(files)
+	if err != nil {
+		log.Fatalf("Error calculating portfolio reports: %v", err)
+	}
+
+	// Display results
+	if format == "json" {
+		printPortfolioReportJSON(portfolioReport)
+	} else {
+		printPortfolioReportTable(portfolioReport, maxHoldings, showAll)
+	}
+}
+
+// printPortfolioReportJSON prints portfolio report in JSON format
+func printPortfolioReportJSON(report *types.PortfolioValuationReport) {
+	jsonData, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		log.Fatalf("Error marshalling portfolio report to JSON: %v", err)
+	}
+	fmt.Println(string(jsonData))
+}
+
+// printPortfolioReportTable prints portfolio report in table format
+func printPortfolioReportTable(report *types.PortfolioValuationReport, maxHoldings int, showAll bool) {
+	fmt.Println("\n" + strings.Repeat("=", 80))
+	fmt.Println("                   📊 PORTFOLIO VALUATION REPORT")
+	fmt.Println(strings.Repeat("=", 80))
+	fmt.Printf("Data Source: %s\n", report.DataSource)
+	fmt.Printf("Generated: %s\n", report.GeneratedAt.Format("2006-01-02 15:04:05"))
+	fmt.Printf("Note: %s\n", report.PriceNote)
+	
+	if len(report.YearlyPortfolios) == 0 {
+		fmt.Println("\nNo portfolio data found.")
+		return
+	}
+	
+	// Summary across all years
+	fmt.Printf("\n💰 PORTFOLIO SUMMARY (%s)\n", report.Currency)
+	fmt.Println(strings.Repeat("-", 60))
+	
+	for _, yearly := range report.YearlyPortfolios {
+		fmt.Printf("\n📅 YEAR %d (as of %s)\n", yearly.Year, yearly.AsOfDate.Format("2006-01-02"))
+		fmt.Println(strings.Repeat("-", 40))
+		fmt.Printf("Total Positions:        %10d\n", yearly.TotalPositions)
+		fmt.Printf("Total Shares:           %10.2f\n", yearly.TotalShares)
+		fmt.Printf("Total Invested:         %10.2f %s\n", yearly.TotalInvested, yearly.Currency)
+		fmt.Printf("Total Market Value:     %10.2f %s\n", yearly.TotalMarketValue, yearly.Currency)
+		fmt.Printf("Unrealized P&L:         %10.2f %s (%.2f%%)\n", 
+			yearly.TotalUnrealizedGainLoss, yearly.Currency, yearly.TotalUnrealizedGainLossPercent)
+		
+		// Show yearly activity
+		fmt.Printf("\n💰 %d ACTIVITY\n", yearly.Year)
+		fmt.Println(strings.Repeat("-", 40))
+		fmt.Printf("Deposits:               %10.2f %s\n", yearly.YearlyDeposits, yearly.Currency)
+		fmt.Printf("Dividends:              %10.2f %s\n", yearly.YearlyDividends, yearly.Currency)
+		if yearly.YearlyInterest > 0 {
+			fmt.Printf("Interest:               %10.2f %s\n", yearly.YearlyInterest, yearly.Currency)
+		}
+		
+		// Show top holdings for this year
+		if len(yearly.Positions) > 0 {
+			if showAll {
+				fmt.Printf("\n🏆 ALL HOLDINGS %d (%d positions)\n", yearly.Year, len(yearly.Positions))
+			} else {
+				fmt.Printf("\n🏆 TOP HOLDINGS %d\n", yearly.Year)
+			}
+			fmt.Println(strings.Repeat("-", 100))
+			fmt.Printf("%-8s %-6s %-12s %-12s %-12s %-12s %-8s\n",
+				"Ticker", "Shares", "Avg Cost", "Last Price", "Total Cost", "Market Val", "P&L %")
+			fmt.Println(strings.Repeat("-", 100))
+			
+			// Display top N holdings
+			limit := maxHoldings
+			if showAll {
+				limit = len(yearly.Positions)
+			} else {
+				if len(yearly.Positions) < limit {
+					limit = len(yearly.Positions)
+				}
+			}
+			
+			for i := 0; i < limit; i++ {
+				pos := yearly.Positions[i]
+				fmt.Printf("%-8s %6.2f %12.2f %12.2f %12.2f %12.2f %7.1f%%\n",
+					pos.Ticker,
+					pos.Shares,
+					pos.AverageCost,
+					pos.LastPrice,
+					pos.TotalCost,
+					pos.MarketValue,
+					pos.UnrealizedGainLossPercent)
+			}
+			
+			// Show expand/collapse hint
+			if !showAll && len(yearly.Positions) > maxHoldings {
+				remaining := len(yearly.Positions) - maxHoldings
+				fmt.Printf("\n📋 ... and %d more positions\n", remaining)
+				fmt.Printf("💡 Use --show-all flag to see all positions: t212-taxes portfolio --dir exports --show-all\n")
+			} else if showAll && len(yearly.Positions) > 10 {
+				fmt.Printf("\n📋 All %d positions shown\n", len(yearly.Positions))
+				fmt.Printf("💡 Use --max-holdings=N to limit display: t212-taxes portfolio --dir exports --max-holdings=5\n")
+			}
+		}
+	}
+	
+	fmt.Println("\n" + strings.Repeat("=", 80))
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"t212-taxes/internal/domain/parser"
 	"t212-taxes/internal/domain/types"
 )
 
@@ -308,4 +309,22 @@ type PurchaseRecord struct {
 	Shares        float64
 	PricePerShare float64
 	TotalCost     float64
+}
+
+// CalculatePortfolioReports calculates portfolio valuation reports from CSV files
+func (fc *FinancialCalculator) CalculatePortfolioReports(files []string) (*types.PortfolioValuationReport, error) {
+	// Parse all transactions from files
+	csvParser := parser.NewCSVParser()
+	result, err := csvParser.ParseMultipleFiles(files)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CSV files: %w", err)
+	}
+
+	// Create portfolio calculator
+	portfolioCalc := NewPortfolioCalculator(fc.baseCurrency)
+	
+	// Calculate portfolio valuation
+	report := portfolioCalc.CalculatePortfolioValuation(result.Transactions)
+	
+	return report, nil
 }

@@ -216,6 +216,12 @@ type PortfolioPosition struct {
 	Shares          float64   `json:"shares"`
 	AverageCost     float64   `json:"average_cost"`
 	TotalCost       float64   `json:"total_cost"`
+	LastPrice       float64   `json:"last_price"`
+	LastPriceDate   time.Time `json:"last_price_date"`
+	LastPriceCurrency string  `json:"last_price_currency"`
+	MarketValue     float64   `json:"market_value"`
+	UnrealizedGainLoss float64 `json:"unrealized_gain_loss"`
+	UnrealizedGainLossPercent float64 `json:"unrealized_gain_loss_percent"`
 	Currency        string    `json:"currency"`
 	FirstPurchase   time.Time `json:"first_purchase"`
 	LastPurchase    time.Time `json:"last_purchase"`
@@ -230,8 +236,20 @@ type PortfolioSummary struct {
 	TotalPositions  int                 `json:"total_positions"`
 	TotalShares     float64             `json:"total_shares"`
 	TotalInvested   float64             `json:"total_invested"`
+	TotalMarketValue float64            `json:"total_market_value"`
+	TotalUnrealizedGainLoss float64     `json:"total_unrealized_gain_loss"`
+	TotalUnrealizedGainLossPercent float64 `json:"total_unrealized_gain_loss_percent"`
 	Currency        string              `json:"currency"`
 	YearlyDeposits  float64             `json:"yearly_deposits"`
 	YearlyDividends float64             `json:"yearly_dividends"`
 	YearlyInterest  float64             `json:"yearly_interest"`
+}
+
+// PortfolioValuationReport represents portfolio valuations across multiple years
+type PortfolioValuationReport struct {
+	YearlyPortfolios []PortfolioSummary `json:"yearly_portfolios"`
+	Currency         string             `json:"currency"`
+	GeneratedAt      time.Time          `json:"generated_at"`
+	DataSource       string             `json:"data_source"`
+	PriceNote        string             `json:"price_note"`
 }

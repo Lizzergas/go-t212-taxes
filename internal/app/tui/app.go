@@ -50,16 +50,19 @@ var (
 
 // Model represents the TUI application state
 type Model struct {
-	YearlyReports     []types.YearlyReport
-	OverallReport     *types.OverallReport
-	AllTransactions   []types.Transaction // Added for portfolio calculation
-	CurrentView       string              // "yearly", "overall", "portfolio", "help"
-	SelectedYear      int                 // Track which year's portfolio we're viewing
-	CurrentPortfolio  *types.PortfolioSummary // Current portfolio data
-	GridCursor        GridCursor
-	GridLayout        GridLayout
-	Width             int
-	Height            int
+	YearlyReports       []types.YearlyReport
+	OverallReport       *types.OverallReport
+	AllTransactions     []types.Transaction              // Added for portfolio calculation
+	PortfolioReport     *types.PortfolioValuationReport  // New: Full portfolio valuation data
+	IncomeReport        *types.IncomeReport              // New: Income/dividend data
+	CurrentView         string                           // "yearly", "overall", "portfolio", "income", "help"
+	SelectedYear        int                              // Track which year's portfolio we're viewing
+	CurrentPortfolio    *types.PortfolioSummary          // Current portfolio data
+	PortfolioExpanded   bool                             // Track if portfolio positions are expanded
+	GridCursor          GridCursor
+	GridLayout          GridLayout
+	Width               int
+	Height              int
 }
 
 // GridCursor represents the current position in the grid
@@ -128,6 +131,29 @@ func NewAppWithPortfolioData(yearlyReports []types.YearlyReport, overallReport *
 	return model
 }
 
+// NewAppWithAllData creates a new TUI application with all available data
+func NewAppWithAllData(yearlyReports []types.YearlyReport, overallReport *types.OverallReport, transactions []types.Transaction, portfolioReport *types.PortfolioValuationReport, incomeReport *types.IncomeReport) *Model {
+	view := "yearly"
+	if len(yearlyReports) == 0 {
+		view = "overall"
+	}
+
+	model := &Model{
+		CurrentView:     view,
+		YearlyReports:   yearlyReports,
+		OverallReport:   overallReport,
+		AllTransactions: transactions,
+		PortfolioReport: portfolioReport,
+		IncomeReport:    incomeReport,
+		GridCursor:      GridCursor{Row: 0, Col: 0},
+	}
+
+	// Calculate initial grid layout
+	model.updateGridLayout()
+
+	return model
+}
+
 // Run starts the TUI application
 func (m *Model) Run() error {
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -151,6 +177,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.CurrentView = "yearly"
 		case "o":
 			m.CurrentView = "overall"
+		case "i":
+			if m.IncomeReport != nil {
+				m.CurrentView = "income"
+			}
+		case "p":
+			// Show portfolio valuation if available
+			if m.PortfolioReport != nil && len(m.PortfolioReport.YearlyPortfolios) > 0 {
+				// Default to latest year if no year selected
+				if m.SelectedYear == 0 && len(m.YearlyReports) > 0 {
+					m.SelectedYear = m.YearlyReports[len(m.YearlyReports)-1].Year
+				}
+				// Find the portfolio for the selected year
+				for _, portfolio := range m.PortfolioReport.YearlyPortfolios {
+					if portfolio.Year == m.SelectedYear {
+						m.CurrentPortfolio = &portfolio
+						break
+					}
+				}
+				m.CurrentView = "portfolio"
+			}
 		case "h", "?":
 			m.CurrentView = "help"
 		case "up", "k":
@@ -201,9 +247,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.CurrentView = "yearly"
 				m.CurrentPortfolio = nil
 			}
-		case "p":
-			if m.CurrentPortfolio != nil {
-				m.CurrentView = "portfolio"
+		case "e", "x":
+			if m.CurrentView == "portfolio" {
+				// Toggle expand/collapse portfolio positions
+				m.PortfolioExpanded = !m.PortfolioExpanded
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -218,30 +265,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements the bubbletea.Model interface
 func (m Model) View() string {
+	var title string
 	var content string
 
 	switch m.CurrentView {
 	case "yearly":
+		title = "📅 Yearly Reports"
 		content = m.renderYearlyView()
 	case "overall":
+		title = "🌟 Overall Summary"
 		content = m.renderOverallView()
 	case "portfolio":
+		title = "📊 Portfolio View"
 		content = m.renderPortfolioView()
+	case "income":
+		title = "💰 Income Report"
+		content = m.renderIncomeView()
+	case "help":
+		title = "❓ Help"
+		content = m.renderHelpView()
 	default:
+		title = "🏠 Home"
 		content = m.renderHelpView()
 	}
 
-	// Add navigation help
-	help := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#626262")).
-		Render("y: yearly grid • o: overall • p: portfolio • h: help • ↑↓←→: navigate • enter: drill down • b: back • q: quit")
+	// Navigation hints
+	navHints := "y: yearly • o: overall • p: portfolio • i: income • h: help • q: quit"
+	if m.CurrentView == "portfolio" {
+		navHints = "b: back to yearly • " + navHints
+	}
 
-	return lipgloss.JoinVertical(lipgloss.Left,
-		titleStyle.Render("🏦 Trading 212 Tax Calculator"),
-		content,
-		"",
-		help,
-	)
+	titleBar := titleStyle.Render(title)
+	navigation := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#626262")).
+		Render(navHints)
+
+	return fmt.Sprintf("%s\n%s\n%s", titleBar, content, navigation)
 }
 
 // renderYearlyView renders the yearly reports view in a grid layout
@@ -367,7 +426,7 @@ func (m Model) renderPortfolioView() string {
 	content.WriteString("\n\n")
 
 	// Summary statistics
-	content.WriteString(headerStyle.Render("📈 Summary"))
+	content.WriteString(headerStyle.Render("📈 Portfolio Summary"))
 	content.WriteString("\n")
 	content.WriteString(fmt.Sprintf("📦 Total Positions: %s\n",
 		valueStyle.Render(fmt.Sprintf("%d", portfolio.TotalPositions))))
@@ -375,6 +434,21 @@ func (m Model) renderPortfolioView() string {
 		valueStyle.Render(fmt.Sprintf("%.2f", portfolio.TotalShares))))
 	content.WriteString(fmt.Sprintf("💰 Total Invested: %s\n",
 		currencyStyle.Render(formatCurrency(portfolio.TotalInvested, portfolio.Currency))))
+	content.WriteString(fmt.Sprintf("📈 Market Value: %s\n",
+		currencyStyle.Render(formatCurrency(portfolio.TotalMarketValue, portfolio.Currency))))
+	
+	// Unrealized gains/losses with color coding
+	gainLossText := fmt.Sprintf("%.2f %s (%.2f%%)", 
+		portfolio.TotalUnrealizedGainLoss, portfolio.Currency, portfolio.TotalUnrealizedGainLossPercent)
+	var gainLossStyled string
+	if portfolio.TotalUnrealizedGainLoss > 0 {
+		gainLossStyled = infoStyle.Render("📈 " + gainLossText)
+	} else if portfolio.TotalUnrealizedGainLoss < 0 {
+		gainLossStyled = errorStyle.Render("📉 " + gainLossText)
+	} else {
+		gainLossStyled = valueStyle.Render("➖ " + gainLossText)
+	}
+	content.WriteString(fmt.Sprintf("Unrealized P&L: %s\n", gainLossStyled))
 
 	// Yearly activity
 	content.WriteString("\n")
@@ -389,37 +463,82 @@ func (m Model) renderPortfolioView() string {
 			currencyStyle.Render(formatCurrency(portfolio.YearlyInterest, portfolio.Currency))))
 	}
 
-	// Positions table
+	// Positions table with market data
 	if len(portfolio.Positions) > 0 {
 		content.WriteString("\n")
-		content.WriteString(headerStyle.Render("🎯 Holdings"))
+		if m.PortfolioExpanded {
+			content.WriteString(headerStyle.Render(fmt.Sprintf("🎯 All Holdings (%d positions)", len(portfolio.Positions))))
+		} else {
+			content.WriteString(headerStyle.Render("🎯 Top Holdings"))
+		}
 		content.WriteString("\n")
 		
-		// Table header
-		content.WriteString(fmt.Sprintf("%-12s %-10s %-12s %-12s %-8s\n",
-			"Ticker", "Shares", "Avg Cost", "Total Cost", "Txns"))
-		content.WriteString(strings.Repeat("-", 70))
+		// Table header with market data
+		content.WriteString(fmt.Sprintf("%-8s %-6s %-10s %-10s %-10s %-10s %-8s\n",
+			"Ticker", "Shares", "Last Price", "Total Cost", "Market Val", "P&L", "P&L %"))
+		content.WriteString(strings.Repeat("-", 75))
 		content.WriteString("\n")
 
-		// Position rows
-		for _, pos := range portfolio.Positions {
-			content.WriteString(fmt.Sprintf("%-12s %-10.2f %-12s %-12s %-8d\n",
+		// Position rows - expand/collapse logic
+		limit := len(portfolio.Positions)
+		if !m.PortfolioExpanded && limit > 10 {
+			limit = 10
+		}
+
+		for i := 0; i < limit; i++ {
+			pos := portfolio.Positions[i]
+			plSign := ""
+			if pos.UnrealizedGainLoss > 0 {
+				plSign = "+"
+			}
+			
+			content.WriteString(fmt.Sprintf("%-8s %6.1f %10.2f %10.2f %10.2f %s%7.0f %6.1f%%\n",
 				pos.Ticker,
 				pos.Shares,
-				formatCurrency(pos.AverageCost, pos.Currency),
-				formatCurrency(pos.TotalCost, pos.Currency),
-				pos.TransactionCount))
+				pos.LastPrice,
+				pos.TotalCost,
+				pos.MarketValue,
+				plSign,
+				pos.UnrealizedGainLoss,
+				pos.UnrealizedGainLossPercent))
+		}
+		
+		// Show expand/collapse information
+		if !m.PortfolioExpanded && len(portfolio.Positions) > 10 {
+			remaining := len(portfolio.Positions) - 10
+			content.WriteString(fmt.Sprintf("\n📋 ... and %d more positions\n", remaining))
+			content.WriteString(infoStyle.Render("Press 'e' or 'x' to expand all positions"))
+		} else if m.PortfolioExpanded && len(portfolio.Positions) > 10 {
+			content.WriteString(fmt.Sprintf("\n📋 All %d positions shown\n", len(portfolio.Positions)))
+			content.WriteString(infoStyle.Render("Press 'e' or 'x' to collapse to top 10"))
 		}
 	}
 
 	// Navigation help
-	content.WriteString("\n")
-	navHelp := lipgloss.NewStyle().
+	content.WriteString("\n\n")
+	var navHelp string
+	if m.PortfolioExpanded {
+		navHelp = "e/x: collapse • b: back • i: income • o: overall • h: help • q: quit"
+	} else {
+		navHelp = "e/x: expand all • b: back • i: income • o: overall • h: help • q: quit"
+	}
+	
+	navHelpStyled := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#626262")).
-		Render("b: back to yearly view • p: portfolio • o: overall • h: help • q: quit")
-	content.WriteString(navHelp)
+		Render(navHelp)
+	content.WriteString(navHelpStyled)
 
 	return boxStyle.Render(content.String())
+}
+
+// renderIncomeView renders the income report view
+func (m Model) renderIncomeView() string {
+	if m.IncomeReport == nil {
+		return boxStyle.Render(warningStyle.Render("No income data available."))
+	}
+
+	content := m.formatIncomeReport(*m.IncomeReport)
+	return boxStyle.Render(content)
 }
 
 // renderHelpView renders the help view
@@ -438,6 +557,7 @@ financial metrics for tax purposes.
    y - View yearly reports (grid layout)
    o - View overall summary
    p - View portfolio (if available)
+   i - View income report
    h - Show this help
    ↑↓←→ or k/j - Navigate grid (in yearly view)
    Enter/Space - Drill down to portfolio (in yearly view)
@@ -452,10 +572,26 @@ financial metrics for tax purposes.
    • Press Enter to view end-of-year portfolio
 
 📊 Portfolio Features:
-   • Shows holdings as of December 31st
-   • Position details with shares and costs
-   • Yearly activity summary
-   • Transaction counts per position
+   • Market values based on last transaction prices
+   • Unrealized gains/losses calculations
+   • Total portfolio value tracking
+   • Position details with P&L percentages
+   • Top holdings ranked by market value
+   • Yearly activity summary (deposits, dividends, interest)
+   • Expand/collapse all positions (e/x keys)
+
+💰 Income Features:
+   • Detailed dividend analysis with withholding tax
+   • Interest income tracking
+   • Total income summaries
+   • Dividend yield calculations
+   • Transaction counts and breakdowns
+
+🎮 Portfolio Controls:
+   • e/x - Expand/collapse all positions
+   • b - Go back to yearly view
+   • ↑↓←→ - Navigate between years
+   • Enter - Drill down to specific year
 
 📁 File Structure:
    Your CSV files should follow this naming pattern:
@@ -592,6 +728,56 @@ func (m Model) formatOverallReport(report types.OverallReport) string {
 			content.WriteString(fmt.Sprintf("💡 Note: This is deposits + realized gains, not current market value\n"))
 		}
 	}
+
+	return content.String()
+}
+
+// formatIncomeReport formats the income report for display
+func (m Model) formatIncomeReport(report types.IncomeReport) string {
+	var content strings.Builder
+
+	// Header
+	content.WriteString(headerStyle.Render("💰 Income Report"))
+	content.WriteString("\n\n")
+
+	// Date range
+	content.WriteString(fmt.Sprintf("📅 Period: %s - %s\n",
+		report.DateRange.From.Format("2006-01-02"),
+		report.DateRange.To.Format("2006-01-02")))
+
+	content.WriteString("\n")
+
+	// Dividend details
+	content.WriteString(headerStyle.Render("💎 Dividends"))
+	content.WriteString("\n")
+	content.WriteString(fmt.Sprintf("Total Dividends: %s\n",
+		currencyStyle.Render(formatCurrency(report.Dividends.TotalDividends, report.Currency))))
+	content.WriteString(fmt.Sprintf("Withholding Tax: %s\n",
+		currencyStyle.Render(formatCurrency(report.Dividends.TotalWithholdingTax, report.Currency))))
+	content.WriteString(fmt.Sprintf("Net Dividends: %s\n",
+		currencyStyle.Render(formatCurrency(report.Dividends.NetDividends, report.Currency))))
+	content.WriteString(fmt.Sprintf("Dividend Count: %d\n", report.Dividends.DividendCount))
+	if report.Dividends.AverageYield > 0 {
+		content.WriteString(fmt.Sprintf("Average Yield: %.2f%%\n", report.Dividends.AverageYield))
+	}
+
+	// Interest details (if any)
+	if report.Interest.TotalInterest > 0 {
+		content.WriteString("\n")
+		content.WriteString(headerStyle.Render("🏦 Interest"))
+		content.WriteString("\n")
+		content.WriteString(fmt.Sprintf("Total Interest: %s\n",
+			currencyStyle.Render(formatCurrency(report.Interest.TotalInterest, report.Currency))))
+		content.WriteString(fmt.Sprintf("Interest Count: %d\n", report.Interest.InterestCount))
+		if report.Interest.AverageRate > 0 {
+			content.WriteString(fmt.Sprintf("Average Rate: %.2f%%\n", report.Interest.AverageRate))
+		}
+	}
+
+	// Total income
+	content.WriteString("\n")
+	content.WriteString(fmt.Sprintf("🎯 Total Income: %s\n",
+		currencyStyle.Render(formatCurrency(report.TotalIncome, report.Currency))))
 
 	return content.String()
 }
