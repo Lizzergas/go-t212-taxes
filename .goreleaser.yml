@@ -141,7 +141,7 @@ brews:
       name: goreleaserbot
       email: bot@goreleaser.com
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    folder: Formula  # Will create Formula/ directory in your repo
+    directory: Formula  # Will create Formula/ directory in your repo
     homepage: "https://github.com/Lizzergas/go-t212-taxes"
     description: "A comprehensive tool for processing Trading 212 CSV exports and calculating tax obligations"
     license: "MIT"
@@ -176,21 +176,21 @@ snapcrafts:
         command: t212-taxes
         plugs: ["home", "network"]
 
-# Scoop (Windows package manager) - using main repository
-scoops:
-  - name: t212-taxes
-    repository:
-      owner: Lizzergas
-      name: go-t212-taxes  # Use main repository
-      branch: main
-      token: "{{ .Env.GITHUB_TOKEN }}"  # Use standard GitHub token
-    url_template: "https://github.com/Lizzergas/go-t212-taxes/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
-    folder: bucket  # Will create bucket/ directory in your repo
-    homepage: "https://github.com/Lizzergas/go-t212-taxes"
-    description: "A comprehensive tool for processing Trading 212 CSV exports and calculating tax obligations"
-    license: MIT
-    skip_upload: auto 
+# Scoop (Windows package manager) - DISABLED for now
+# scoops:
+#   - name: t212-taxes
+#     repository:
+#       owner: Lizzergas
+#       name: go-t212-taxes  # Use main repository
+#       branch: main
+#       token: "{{ .Env.GITHUB_TOKEN }}"  # Use standard GitHub token
+#     url_template: "https://github.com/Lizzergas/go-t212-taxes/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+#     commit_author:
+#       name: goreleaserbot
+#       email: bot@goreleaser.com
+#     commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
+#     directory: bucket  # Will create bucket/ directory in your repo
+#     homepage: "https://github.com/Lizzergas/go-t212-taxes"
+#     description: "A comprehensive tool for processing Trading 212 CSV exports and calculating tax obligations"
+#     license: MIT
+#     skip_upload: auto 
