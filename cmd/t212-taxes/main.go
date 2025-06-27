@@ -25,8 +25,11 @@ func main() {
 	// Initialize configuration
 	initConfig()
 
+	// Get version information (dynamic if not set via ldflags)
+	v, c, d, b := getVersionInfo()
+
 	// Set version information for CLI
-	cli.SetVersionInfo(version, commit, date, builtBy)
+	cli.SetVersionInfo(v, c, d, b)
 
 	// Execute the root command
 	if err := cli.RootCmd.Execute(); err != nil {

@@ -6,7 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Building and Running
 ```bash
-# Build the application
+# Build the application (with version info from git)
+make build
+
+# Build for development (dynamic version detection)
+make dev
+
+# Simple go build (also uses dynamic version detection)
 go build -o t212-taxes ./cmd/t212-taxes
 
 # Run the application
@@ -14,6 +20,17 @@ go run ./cmd/t212-taxes
 
 # Build for multiple platforms
 make build-all
+```
+
+### Version Information
+The application automatically detects version information:
+- **With ldflags**: Uses build-time injected values (releases, make build)
+- **Without ldflags**: Dynamically detects from git (development, go build)
+
+```bash
+# Check version info
+./t212-taxes version
+./t212-taxes version --format json
 ```
 
 ### Testing

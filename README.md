@@ -258,8 +258,26 @@ go test ./...
 go test -v -race -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out
 
-# Build
+# Build with proper version info
+make build
+
+# Build for development (dynamic version detection)
+make dev
+
+# Simple development build
 go build -o t212-taxes ./cmd/t212-taxes
+```
+
+### Version Information
+The application automatically detects version information from git:
+- **Development builds**: Dynamic detection from git state
+- **Release builds**: Injected via ldflags during CI/CD
+- **Make builds**: Proper version info from git describe
+
+```bash
+# Check version (shows current git tag, commit, build time)
+./t212-taxes version
+./t212-taxes version --format json
 ```
 
 ### Code Quality

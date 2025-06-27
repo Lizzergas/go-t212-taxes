@@ -13,7 +13,7 @@ COMMIT ?= $(shell git rev-parse HEAD)
 DATE ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 
 # Build flags
-LDFLAGS=-ldflags="-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
+LDFLAGS=-ldflags="-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE) -X main.builtBy=make"
 
 # Color output
 RED=\033[0;31m
@@ -48,6 +48,13 @@ build: clean ## Build the application
 	@echo '$(YELLOW)Building $(BINARY_NAME)...$(NC)'
 	@go build $(LDFLAGS) -o $(BINARY_NAME) $(MAIN_PATH)
 	@echo '$(GREEN)Build complete: $(BINARY_NAME)$(NC)'
+
+.PHONY: dev
+dev: ## Build for development (with dynamic version detection)
+	@echo '$(YELLOW)Building $(BINARY_NAME) for development...$(NC)'
+	@go build -o $(BINARY_NAME) $(MAIN_PATH)
+	@echo '$(GREEN)Development build complete: $(BINARY_NAME)$(NC)'
+	@echo '$(BLUE)Version info will be detected dynamically from git$(NC)'
 
 .PHONY: build-all
 build-all: clean ## Build for all platforms
