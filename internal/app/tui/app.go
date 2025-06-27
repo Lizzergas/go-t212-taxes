@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -59,6 +61,8 @@ type Model struct {
 	SelectedYear        int                              // Track which year's portfolio we're viewing
 	CurrentPortfolio    *types.PortfolioSummary          // Current portfolio data
 	PortfolioExpanded   bool                             // Track if portfolio positions are expanded
+	PortfolioCursor     int                              // Current selected position in portfolio
+	PortfolioScroll     int                              // Current scroll offset in portfolio
 	GridCursor          GridCursor
 	GridLayout          GridLayout
 	Width               int
@@ -205,12 +209,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.isValidPosition(newRow, m.GridCursor.Col) {
 					m.GridCursor.Row = newRow
 				}
+			} else if m.CurrentView == "portfolio" && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
+				// Portfolio navigation - move cursor up
+				if m.PortfolioCursor > 0 {
+					m.PortfolioCursor--
+					m.adjustPortfolioScroll()
+				}
 			}
 		case "down", "j":
 			if m.CurrentView == "yearly" && len(m.YearlyReports) > 0 {
 				newRow := m.GridCursor.Row + 1
 				if m.isValidPosition(newRow, m.GridCursor.Col) {
 					m.GridCursor.Row = newRow
+				}
+			} else if m.CurrentView == "portfolio" && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
+				// Portfolio navigation - move cursor down
+				maxCursor := len(m.CurrentPortfolio.Positions) - 1
+				if !m.PortfolioExpanded && maxCursor > 9 {
+					maxCursor = 9 // Limit to top 10 when collapsed
+				}
+				if m.PortfolioCursor < maxCursor {
+					m.PortfolioCursor++
+					m.adjustPortfolioScroll()
 				}
 			}
 		case "left":
@@ -239,6 +259,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					portfolioCalc := calculator.NewPortfolioCalculator("EUR") // TODO: Make currency configurable
 					m.CurrentPortfolio = portfolioCalc.CalculateEndOfYearPortfolio(m.AllTransactions, selectedYear)
 					m.CurrentView = "portfolio"
+					// Reset portfolio navigation
+					m.PortfolioCursor = 0
+					m.PortfolioScroll = 0
+				}
+			} else if m.CurrentView == "portfolio" && m.CurrentPortfolio != nil && len(m.CurrentPortfolio.Positions) > 0 {
+				// Open browser with Yahoo Finance quote for selected stock
+				maxPositions := len(m.CurrentPortfolio.Positions)
+				if !m.PortfolioExpanded && maxPositions > 10 {
+					maxPositions = 10
+				}
+				if m.PortfolioCursor < maxPositions {
+					ticker := m.CurrentPortfolio.Positions[m.PortfolioCursor].Ticker
+					return m, m.openBrowser(ticker)
 				}
 			}
 		case "b":
@@ -246,11 +279,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Go back to yearly view
 				m.CurrentView = "yearly"
 				m.CurrentPortfolio = nil
+				// Reset portfolio navigation state
+				m.PortfolioCursor = 0
+				m.PortfolioScroll = 0
 			}
 		case "e", "x":
 			if m.CurrentView == "portfolio" {
 				// Toggle expand/collapse portfolio positions
 				m.PortfolioExpanded = !m.PortfolioExpanded
+				// Reset cursor and scroll when toggling
+				m.PortfolioCursor = 0
+				m.PortfolioScroll = 0
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -467,49 +506,104 @@ func (m Model) renderPortfolioView() string {
 	if len(portfolio.Positions) > 0 {
 		content.WriteString("\n")
 		if m.PortfolioExpanded {
-			content.WriteString(headerStyle.Render(fmt.Sprintf("🎯 All Holdings (%d positions)", len(portfolio.Positions))))
+			content.WriteString(headerStyle.Render(fmt.Sprintf("🎯 All Holdings (%d positions) - Position %d/%d", len(portfolio.Positions), m.PortfolioCursor+1, len(portfolio.Positions))))
 		} else {
-			content.WriteString(headerStyle.Render("🎯 Top Holdings"))
+			visiblePositions := min(len(portfolio.Positions), 10)
+			content.WriteString(headerStyle.Render(fmt.Sprintf("🎯 Top Holdings - Position %d/%d", m.PortfolioCursor+1, visiblePositions)))
 		}
 		content.WriteString("\n")
 		
 		// Table header with market data
-		content.WriteString(fmt.Sprintf("%-8s %-6s %-10s %-10s %-10s %-10s %-8s\n",
+		content.WriteString(fmt.Sprintf("%-8s %8s %10s %12s %12s %10s %8s\n",
 			"Ticker", "Shares", "Last Price", "Total Cost", "Market Val", "P&L", "P&L %"))
-		content.WriteString(strings.Repeat("-", 75))
+		content.WriteString(strings.Repeat("-", 85))
 		content.WriteString("\n")
 
-		// Position rows - expand/collapse logic
-		limit := len(portfolio.Positions)
-		if !m.PortfolioExpanded && limit > 10 {
-			limit = 10
+		// Calculate scrollable view
+		maxPositions := len(portfolio.Positions)
+		if !m.PortfolioExpanded && maxPositions > 10 {
+			maxPositions = 10
+		}
+		
+		// Calculate available height for positions (terminal height minus headers/footers)
+		availableHeight := m.Height - 20 // Reserve space for headers, summary, and navigation
+		if availableHeight < 5 {
+			availableHeight = 5
+		}
+		
+		// Calculate visible range
+		startIdx := m.PortfolioScroll
+		endIdx := min(startIdx+availableHeight, maxPositions)
+		
+		// Show scroll indicator if needed
+		if maxPositions > availableHeight {
+			content.WriteString(fmt.Sprintf("▲ Scroll: %d-%d of %d positions ▲\n", startIdx+1, endIdx, maxPositions))
 		}
 
-		for i := 0; i < limit; i++ {
+		// Render visible positions with cursor highlighting
+		for i := startIdx; i < endIdx; i++ {
 			pos := portfolio.Positions[i]
-			plSign := ""
+			
+			// Format P&L with proper sign and alignment
+			plText := ""
 			if pos.UnrealizedGainLoss > 0 {
-				plSign = "+"
+				plText = fmt.Sprintf("+%.0f", pos.UnrealizedGainLoss)
+			} else if pos.UnrealizedGainLoss < 0 {
+				plText = fmt.Sprintf("%.0f", pos.UnrealizedGainLoss) // negative sign already included
+			} else {
+				plText = "0"
 			}
 			
-			content.WriteString(fmt.Sprintf("%-8s %6.1f %10.2f %10.2f %10.2f %s%7.0f %6.1f%%\n",
+			// Format P&L percentage with proper sign
+			plPercentText := ""
+			if pos.UnrealizedGainLossPercent > 0 {
+				plPercentText = fmt.Sprintf("+%.1f%%", pos.UnrealizedGainLossPercent)
+			} else if pos.UnrealizedGainLossPercent < 0 {
+				plPercentText = fmt.Sprintf("%.1f%%", pos.UnrealizedGainLossPercent) // negative sign already included
+			} else {
+				plPercentText = "0.0%"
+			}
+			
+			// Format the position row with proper right-alignment for numbers
+			positionRow := fmt.Sprintf("%-8s %8.1f %10.2f %12.2f %12.2f %10s %8s",
 				pos.Ticker,
 				pos.Shares,
 				pos.LastPrice,
 				pos.TotalCost,
 				pos.MarketValue,
-				plSign,
-				pos.UnrealizedGainLoss,
-				pos.UnrealizedGainLossPercent))
+				plText,
+				plPercentText)
+			
+			// Highlight selected position
+			if i == m.PortfolioCursor {
+				// Create highlighted style for selected position
+				selectedStyle := lipgloss.NewStyle().
+					Foreground(lipgloss.Color("#000000")).
+					Background(lipgloss.Color("#FF69B4")).
+					Bold(true)
+				
+				// Render the highlighted row with fixed width to maintain alignment
+				content.WriteString(selectedStyle.Render(positionRow))
+				content.WriteString(" ← Selected")
+			} else {
+				content.WriteString(positionRow)
+			}
+			content.WriteString("\n")
+		}
+		
+		// Show scroll indicator at bottom if needed
+		if maxPositions > availableHeight && endIdx < maxPositions {
+			remaining := maxPositions - endIdx
+			content.WriteString(fmt.Sprintf("▼ ... and %d more positions below ▼\n", remaining))
 		}
 		
 		// Show expand/collapse information
 		if !m.PortfolioExpanded && len(portfolio.Positions) > 10 {
 			remaining := len(portfolio.Positions) - 10
-			content.WriteString(fmt.Sprintf("\n📋 ... and %d more positions\n", remaining))
+			content.WriteString(fmt.Sprintf("\n📋 Total: %d positions (%d more available with expand)\n", len(portfolio.Positions), remaining))
 			content.WriteString(infoStyle.Render("Press 'e' or 'x' to expand all positions"))
 		} else if m.PortfolioExpanded && len(portfolio.Positions) > 10 {
-			content.WriteString(fmt.Sprintf("\n📋 All %d positions shown\n", len(portfolio.Positions)))
+			content.WriteString(fmt.Sprintf("\n📋 All %d positions available\n", len(portfolio.Positions)))
 			content.WriteString(infoStyle.Render("Press 'e' or 'x' to collapse to top 10"))
 		}
 	}
@@ -517,10 +611,14 @@ func (m Model) renderPortfolioView() string {
 	// Navigation help
 	content.WriteString("\n\n")
 	var navHelp string
-	if m.PortfolioExpanded {
-		navHelp = "e/x: collapse • b: back • i: income • o: overall • h: help • q: quit"
+	if len(portfolio.Positions) > 0 {
+		if m.PortfolioExpanded {
+			navHelp = "↑↓: navigate • Enter: open quote • e/x: collapse • b: back • q: quit"
+		} else {
+			navHelp = "↑↓: navigate • Enter: open quote • e/x: expand • b: back • q: quit"
+		}
 	} else {
-		navHelp = "e/x: expand all • b: back • i: income • o: overall • h: help • q: quit"
+		navHelp = "b: back • i: income • o: overall • h: help • q: quit"
 	}
 	
 	navHelpStyled := lipgloss.NewStyle().
@@ -579,6 +677,8 @@ financial metrics for tax purposes.
    • Top holdings ranked by market value
    • Yearly activity summary (deposits, dividends, interest)
    • Expand/collapse all positions (e/x keys)
+   • Scrollable position navigation with cursor
+   • Open Yahoo Finance quotes in browser (Enter key)
 
 💰 Income Features:
    • Detailed dividend analysis with withholding tax
@@ -588,10 +688,17 @@ financial metrics for tax purposes.
    • Transaction counts and breakdowns
 
 🎮 Portfolio Controls:
+   • ↑↓ or k/j - Navigate through positions
+   • Enter/Space - Open Yahoo Finance quote in browser
    • e/x - Expand/collapse all positions
    • b - Go back to yearly view
-   • ↑↓←→ - Navigate between years
-   • Enter - Drill down to specific year
+   • Selected position highlighted in pink
+
+🌐 Browser Integration:
+   • Press Enter on any stock position to open Yahoo Finance
+   • URLs follow format: https://finance.yahoo.com/quote/{TICKER}
+   • Works on Windows, macOS, and Linux
+   • Selected ticker shown with pink highlight
 
 📁 File Structure:
    Your CSV files should follow this naming pattern:
@@ -945,4 +1052,48 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// adjustPortfolioScroll adjusts the scroll offset to keep the cursor visible
+func (m *Model) adjustPortfolioScroll() {
+	// Calculate available height for portfolio positions (subtract header lines)
+	availableHeight := m.Height - 20 // Reserve space for headers, summary, and navigation
+	if availableHeight < 5 {
+		availableHeight = 5 // Minimum viewable area
+	}
+	
+	// Adjust scroll to keep cursor visible
+	if m.PortfolioCursor < m.PortfolioScroll {
+		m.PortfolioScroll = m.PortfolioCursor
+	} else if m.PortfolioCursor >= m.PortfolioScroll+availableHeight {
+		m.PortfolioScroll = m.PortfolioCursor - availableHeight + 1
+	}
+	
+	// Ensure scroll doesn't go negative
+	if m.PortfolioScroll < 0 {
+		m.PortfolioScroll = 0
+	}
+}
+
+// openBrowser returns a command to open the browser with Yahoo Finance quote
+func (m *Model) openBrowser(ticker string) tea.Cmd {
+	url := "https://finance.yahoo.com/quote/" + ticker
+	return func() tea.Msg {
+		var cmd *exec.Cmd
+		switch runtime.GOOS {
+		case "windows":
+			cmd = exec.Command("cmd", "/c", "start", url)
+		case "darwin":
+			cmd = exec.Command("open", url)
+		default: // linux and others
+			cmd = exec.Command("xdg-open", url)
+		}
+		
+		err := cmd.Run()
+		if err != nil {
+			// Return an error message if the browser fails to open
+			return fmt.Sprintf("Failed to open browser: %v", err)
+		}
+		return fmt.Sprintf("Opened %s in browser", ticker)
+	}
 }
