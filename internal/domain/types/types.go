@@ -199,11 +199,39 @@ type InterestSummary struct {
 	Currency         string            `json:"currency"`
 }
 
-// IncomeReport represents comprehensive income data including dividends and interest
+// IncomeReport represents comprehensive income data combining dividends and interest
 type IncomeReport struct {
 	Dividends     DividendSummary `json:"dividends"`
 	Interest      InterestSummary `json:"interest"`
 	TotalIncome   float64         `json:"total_income"`
 	Currency      string          `json:"currency"`
 	DateRange     DateRange       `json:"date_range"`
+}
+
+// PortfolioPosition represents a position in the portfolio at a specific date
+type PortfolioPosition struct {
+	Ticker          string    `json:"ticker"`
+	ISIN            string    `json:"isin"`
+	Name            string    `json:"name"`
+	Shares          float64   `json:"shares"`
+	AverageCost     float64   `json:"average_cost"`
+	TotalCost       float64   `json:"total_cost"`
+	Currency        string    `json:"currency"`
+	FirstPurchase   time.Time `json:"first_purchase"`
+	LastPurchase    time.Time `json:"last_purchase"`
+	TransactionCount int      `json:"transaction_count"`
+}
+
+// PortfolioSummary represents the portfolio state at the end of a year
+type PortfolioSummary struct {
+	Year            int                 `json:"year"`
+	AsOfDate        time.Time           `json:"as_of_date"`
+	Positions       []PortfolioPosition `json:"positions"`
+	TotalPositions  int                 `json:"total_positions"`
+	TotalShares     float64             `json:"total_shares"`
+	TotalInvested   float64             `json:"total_invested"`
+	Currency        string              `json:"currency"`
+	YearlyDeposits  float64             `json:"yearly_deposits"`
+	YearlyDividends float64             `json:"yearly_dividends"`
+	YearlyInterest  float64             `json:"yearly_interest"`
 }

@@ -211,8 +211,8 @@ func analyzeFiles(cmd *cobra.Command, args []string) {
 
 	overallReport := finCalc.CalculateOverallReport(yearlyReports)
 
-	// Show TUI with reports
-	app := tui.NewAppWithData(yearlyReports, overallReport)
+	// Show TUI with reports and transactions for portfolio functionality
+	app := tui.NewAppWithPortfolioData(yearlyReports, overallReport, result.Transactions)
 	if err := app.Run(); err != nil {
 		log.Fatalf("Failed to start TUI: %v", err)
 	}
