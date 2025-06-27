@@ -1,0 +1,51 @@
+# T212 Taxes Configuration File
+# This file contains default settings for the Trading 212 tax calculator
+
+app:
+  # Logging level: debug, info, warn, error
+  log_level: "info"
+  
+  # Default output format: table, json
+  output_format: "table"
+  
+  # Enable verbose logging
+  verbose: false
+
+# Tax calculation settings
+tax:
+  # Default jurisdiction for tax calculations
+  default_jurisdiction: "EU"
+  
+  # Default tax year (0 means current year)
+  default_year: 0
+  
+  # Use FIFO (First In, First Out) method for capital gains
+  use_fifo_method: true
+  
+  # Base currency for calculations
+  currency: "EUR"
+
+# CSV processing settings
+csv:
+  # CSV delimiter character
+  delimiter: ","
+  
+  # Skip invalid rows during processing
+  skip_invalid_rows: true
+  
+  # Date format in CSV files
+  date_format: "2006-01-02 15:04:05"
+  
+  # Validate yearly structure of CSV files
+  validate_yearly_structure: true
+
+# Display settings
+display:
+  # Show currency symbols in output
+  show_currency_symbols: true
+  
+  # Number of decimal places for currency amounts
+  currency_decimal_places: 2
+  
+  # Show progress indicators during processing
+  show_progress: true
