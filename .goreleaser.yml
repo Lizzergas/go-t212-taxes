@@ -66,6 +66,13 @@ changelog:
       - '^ci:'
       - '^chore:'
       - '^build:'
+      - '^debug:'          # Debug commits (should have caught the debugging commits)
+      - '^refactor:'       # Refactoring commits (internal changes)
+      - '^style:'          # Code style changes
+      - '^perf:'           # Performance improvements (unless significant)
+      - '^Homebrew cask update'  # Automated Homebrew commits
+      - '^Auto-generated'  # Any auto-generated commits
+      - '^\[skip changelog\]'  # Allow manual exclusion
   groups:
     - title: Features
       regexp: "^.*feat[(\\w)]*:+.*$"

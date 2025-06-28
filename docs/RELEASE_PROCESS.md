@@ -367,6 +367,45 @@ Monitor these metrics after each release:
 - **Release Quality**: Zero critical bugs in first 48 hours
 - **Adoption Rate**: Downloads increasing release over release
 
+## 🎯 Release Best Practices
+
+### Commit Discipline for Releases
+
+To ensure clean release notes, follow these guidelines:
+
+**✅ Good Release Practices:**
+- **Squash debug commits** before releasing
+- **Use descriptive commit prefixes** that will be filtered appropriately:
+  - `debug:` - Debug/troubleshooting commits (filtered out)
+  - `chore:` - Maintenance tasks (filtered out)  
+  - `refactor:` - Code restructuring (filtered out)
+  - `feat:` - New features (included in release notes)
+  - `fix:` - Bug fixes (included in release notes)
+
+**❌ Avoid These Patterns:**
+- Releasing during active debugging sessions
+- Including multiple unrelated commits in a single release
+- Adding commits with generic messages like "fix stuff"
+
+**🔧 Emergency Fix Protocol:**
+If you need to release during debugging:
+1. **Squash commits** with `git rebase -i HEAD~n`
+2. **Use `[skip changelog]`** prefix for commits that shouldn't appear
+3. **Consider patch releases** (v1.0.21 → v1.0.22) instead of jumping versions
+
+**📝 Commit Message Examples:**
+```bash
+# These will be INCLUDED in release notes:
+git commit -m "feat: add new portfolio analysis feature"
+git commit -m "fix: resolve CSV parsing error for dividend records"
+
+# These will be EXCLUDED from release notes:
+git commit -m "debug: add logging for CI compilation issue"
+git commit -m "chore: update linting configuration" 
+git commit -m "refactor: reorganize calculator package structure"
+git commit -m "[skip changelog] temporary debugging commit"
+```
+
 ---
 
 For questions about the release process, see:
