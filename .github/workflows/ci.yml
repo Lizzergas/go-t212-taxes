@@ -143,15 +143,7 @@ jobs:
           echo "Warning: No coverage file generated"
         fi
 
-    - name: Upload coverage to Codecov
-      if: success()
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false  # Don't fail CI if Codecov fails
-        file: ./coverage.out
-        flags: unittests
-        name: codecov-umbrella
+
 
     - name: Upload coverage artifacts
       if: always()
@@ -182,43 +174,100 @@ jobs:
       with:
         go-version: ${{ env.GO_VERSION }}
 
-    - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v8
-      with:
-        version: v2.1
-        args: --timeout=10m
-      continue-on-error: true
-      id: golangci_lint
-
-    - name: Set quality gate status
-      id: quality_gate
+    - name: Install dependencies
       run: |
-        echo "Setting quality gate status based on golangci-lint results..."
+        # Install golangci-lint
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
         
-        if [ "${{ steps.golangci_lint.outcome }}" = "success" ]; then
-          echo "issue_count=0" >> $GITHUB_OUTPUT
-          echo "quality_status=passed" >> $GITHUB_OUTPUT
-          echo "status_emoji=✅" >> $GITHUB_OUTPUT
-          echo "Quality gate: ✅ PASSED - No linting issues found"
+        # Install jq for JSON parsing
+        sudo apt-get update && sudo apt-get install -y jq
+
+    - name: Run golangci-lint with detailed output
+      id: golangci_lint
+      run: |
+        echo "Running golangci-lint with detailed output..."
+        
+        # Run golangci-lint and capture output
+        golangci-lint run --timeout=10m --out-format=json:lint-results.json --out-format=line-number 2>&1 | tee lint-output.txt || true
+        
+        # Count issues and extract details
+        if [ -f "lint-results.json" ]; then
+          # Parse JSON for specific issue details
+          ISSUE_COUNT=$(jq '.Issues | length' lint-results.json 2>/dev/null || echo "0")
+          echo "issue_count=$ISSUE_COUNT" >> $GITHUB_OUTPUT
+          
+          # Get unique linter names that found issues
+          LINTERS=$(jq -r '.Issues | group_by(.FromLinter) | map(.[0].FromLinter) | join(", ")' lint-results.json 2>/dev/null || echo "none")
+          echo "linters_with_issues=$LINTERS" >> $GITHUB_OUTPUT
+          
+          # Get top 5 specific issues
+          ISSUES_SUMMARY=$(jq -r '.Issues[:5] | map("• \(.Text) (\(.FromLinter))") | join("\n")' lint-results.json 2>/dev/null || echo "No specific issues found")
+          echo "issues_summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$ISSUES_SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
         else
-          # Assume moderate number of issues (within threshold)
-          echo "issue_count=8" >> $GITHUB_OUTPUT
+          echo "issue_count=0" >> $GITHUB_OUTPUT
+          echo "linters_with_issues=none" >> $GITHUB_OUTPUT
+          echo "issues_summary=No issues found" >> $GITHUB_OUTPUT
+        fi
+        
+        # Set quality gate status
+        if [ "${ISSUE_COUNT:-0}" -le 15 ]; then
           echo "quality_status=passed" >> $GITHUB_OUTPUT
           echo "status_emoji=✅" >> $GITHUB_OUTPUT
-          echo "Quality gate: ✅ PASSED - Issues found but within threshold (8 ≤ 15)"
+        else
+          echo "quality_status=failed" >> $GITHUB_OUTPUT  
+          echo "status_emoji=❌" >> $GITHUB_OUTPUT
         fi
+        
+        echo "Linting completed. Found $ISSUE_COUNT issues."
+
+    - name: Display lint issues summary in CI logs
+      run: |
+        echo "=============================================";
+        echo "📋 LINTING RESULTS SUMMARY";
+        echo "=============================================";
+        echo "Issues found: ${{ steps.golangci_lint.outputs.issue_count }}";
+        echo "Quality gate: ${{ steps.golangci_lint.outputs.status_emoji }} ${{ steps.golangci_lint.outputs.quality_status }}";
+        echo "Linters with issues: ${{ steps.golangci_lint.outputs.linters_with_issues }}";
+        echo "";
+        
+        if [ "${{ steps.golangci_lint.outputs.issue_count }}" -gt 0 ]; then
+          echo "📋 SPECIFIC ISSUES FOUND:";
+          echo "------------------------";
+          if [ -f "lint-results.json" ]; then
+            # Show all issues from JSON
+            jq -r '.Issues[] | "• \(.Pos.Filename):\(.Pos.Line):\(.Pos.Column): \(.Text) (\(.FromLinter))"' lint-results.json || {
+              echo "Error parsing JSON, showing raw output:";
+              cat lint-output.txt;
+            }
+          else
+            echo "No JSON output available, showing raw linter output:";
+            cat lint-output.txt;
+          fi
+          echo "";
+          echo "💡 To fix these issues locally, run:";
+          echo "   ./scripts/lint-check.sh";
+          echo "   ./scripts/test-all.sh --skip-security --skip-coverage";
+        else
+          echo "✅ No linting issues found!";
+        fi
+        echo "=============================================";
 
     - name: Comment on PR (if applicable)
       if: github.event_name == 'pull_request'
       uses: actions/github-script@v7
       with:
         script: |
-          const issueCount = '${{ steps.quality_gate.outputs.issue_count }}';
-          const qualityStatus = '${{ steps.quality_gate.outputs.quality_status }}';
-          const statusEmoji = '${{ steps.quality_gate.outputs.status_emoji }}';
+          const issueCount = '${{ steps.golangci_lint.outputs.issue_count }}';
+          const qualityStatus = '${{ steps.golangci_lint.outputs.quality_status }}';
+          const statusEmoji = '${{ steps.golangci_lint.outputs.status_emoji }}';
+          const lintersWithIssues = '${{ steps.golangci_lint.outputs.linters_with_issues }}';
+          const issuesSummary = `${{ steps.golangci_lint.outputs.issues_summary }}`;
           const coverage = '${{ needs.test.outputs.coverage || '0' }}';
           
-          const comment = `## 🔍 CI Pipeline Results
+          const comment = `## 🔍 Pipeline Results
           
           ### Test Suite Results
           - **Tests**: ✅ All tests passing
@@ -226,14 +275,23 @@ jobs:
           - **Build**: ✅ Build successful
           - **Security**: ✅ Security scan completed
           
-          ### Quality Gate Results
+          ### Linting Results
           - **Total Issues**: ${issueCount}
           - **Quality Gate**: ${statusEmoji} ${qualityStatus.toUpperCase()}
           - **Threshold**: 15 issues maximum
+          - **Linters with Issues**: ${lintersWithIssues}
+          
+          ${issueCount > 0 ? `
+          #### Issues Found:
+          \`\`\`
+          ${issuesSummary}
+          \`\`\`
+          ${issueCount > 5 ? `\n*Showing top 5 issues. Run \`golangci-lint run\` locally to see all ${issueCount} issues.*` : ''}
+          ` : ''}
           
           ${qualityStatus === 'failed' ? 
-            '### ⚠️ Action Required\nThis PR exceeds our quality threshold. Consider fixing issues before merging.' : 
-            '### 🎉 Quality Check Passed\nThis PR meets our quality standards!'
+            '### ⚠️ Action Required\nThis PR exceeds our quality threshold. Please fix the linting issues before merging.' : 
+            ''
           }
           
           <details>
@@ -267,7 +325,7 @@ jobs:
           });
           
           const existingComment = comments.data.find(comment => 
-            comment.body.includes('🔍 CI Pipeline Results')
+            comment.body.includes('🔍 Pipeline Results')
           );
           
           if (existingComment) {
@@ -337,13 +395,44 @@ jobs:
     - name: Display security scan summary
       if: steps.sarif_check.outputs.sarif_exists == 'true'
       run: |
-        echo "=== Security Scan Summary ==="
-        echo "Running human-readable gosec output for logs..."
-        gosec ./... || {
-          echo "Security issues found. Check the SARIF file for details."
-          echo "This is normal if security issues exist in the codebase."
+        echo "=============================================";
+        echo "🔒 SECURITY SCAN RESULTS";
+        echo "=============================================";
+        echo "Running human-readable gosec output for logs...";
+        echo "";
+        
+        # Capture gosec output and exit code
+        GOSEC_OUTPUT=$(gosec ./... 2>&1 || true)
+        GOSEC_EXIT_CODE=$?
+        
+        echo "$GOSEC_OUTPUT";
+        echo "";
+        
+        if [ $GOSEC_EXIT_CODE -eq 0 ]; then
+          echo "✅ No security issues found!";
+        else
+          echo "⚠️  Security issues detected (exit code: $GOSEC_EXIT_CODE)";
+          echo "📋 Issues have been uploaded to GitHub Security tab";
+          echo "💡 Review the security findings and address as needed";
+        fi
+        echo "=============================================";
+
+    - name: Display detailed security issues (if any)
+      run: |
+        echo "🔍 DETAILED SECURITY ANALYSIS";
+        echo "==============================";
+        echo "Running gosec with detailed output...";
+        echo "";
+        
+        # Run gosec with verbose output to show specific issues
+        gosec -fmt text ./... 2>&1 | head -50 || {
+          echo "Security scan completed. If issues were found, they are detailed above.";
         }
-        echo "=== End Summary ==="
+        echo "";
+        echo "💡 For local security scanning, install gosec:";
+        echo "   go install github.com/securego/gosec/v2/cmd/gosec@latest";
+        echo "   gosec ./...";
+        echo "==============================";
 
     - name: Upload SARIF file
       if: steps.sarif_check.outputs.sarif_exists == 'true'
@@ -396,6 +485,78 @@ jobs:
       with:
         name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
         path: dist/
+
+  pipeline_summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [test, lint, security, build]
+    if: always()  # Run even if some jobs fail
+    steps:
+    - name: Display final pipeline results
+      run: |
+        echo "============================================="
+        echo "🏁 PIPELINE COMPLETION SUMMARY"
+        echo "============================================="
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Commit: ${{ github.sha }}"
+        echo "Triggered by: ${{ github.event_name }}"
+        echo ""
+        
+        # Test results
+        echo "📋 TEST RESULTS:"
+        if [ "${{ needs.test.result }}" = "success" ]; then
+          echo "  ✅ Tests: PASSED"
+          echo "  📊 Coverage: ${{ needs.test.outputs.coverage || 'N/A' }}%"
+        else
+          echo "  ❌ Tests: FAILED"
+        fi
+        echo ""
+        
+        # Lint results  
+        echo "🔍 LINTING RESULTS:"
+        if [ "${{ needs.lint.result }}" = "success" ]; then
+          echo "  ✅ Linting: PASSED"
+          echo "  📈 Quality Gate: Passed"
+        else
+          echo "  ❌ Linting: FAILED"
+          echo "  📈 Quality Gate: Failed (check logs above)"
+        fi
+        echo ""
+        
+        # Security results
+        echo "🔒 SECURITY RESULTS:"
+        if [ "${{ needs.security.result }}" = "success" ]; then
+          echo "  ✅ Security Scan: COMPLETED"
+        else
+          echo "  ⚠️  Security Scan: ISSUES FOUND (check logs)"
+        fi
+        echo ""
+        
+        # Build results
+        echo "🔨 BUILD RESULTS:"
+        if [ "${{ needs.build.result }}" = "success" ]; then
+          echo "  ✅ Build: SUCCESS"
+        else
+          echo "  ❌ Build: FAILED"
+        fi
+        echo ""
+        
+        # Overall status
+        echo "🎯 OVERALL PIPELINE STATUS:"
+        if [ "${{ needs.test.result }}" = "success" ] && [ "${{ needs.lint.result }}" = "success" ] && [ "${{ needs.build.result }}" = "success" ]; then
+          echo "  🎉 SUCCESS - All critical checks passed!"
+          echo "  🚀 Code is ready for merge/deployment"
+        else
+          echo "  ⚠️  ISSUES DETECTED - Review failures above"
+          echo "  🔧 Fix issues before merging"
+        fi
+        echo ""
+        
+        echo "💡 LOCAL DEVELOPMENT COMMANDS:"
+        echo "  ./scripts/test-all.sh          # Complete test suite"
+        echo "  ./scripts/ci-test.sh           # CI simulation"  
+        echo "  ./scripts/lint-check.sh        # Quality gate check"
+        echo "============================================="
 
   release:
     name: Release

@@ -367,6 +367,81 @@ Monitor these metrics after each release:
 - **Release Quality**: Zero critical bugs in first 48 hours
 - **Adoption Rate**: Downloads increasing release over release
 
+## 🎯 Release Best Practices
+
+### Commit Discipline for Releases
+
+To ensure clean release notes, follow these guidelines:
+
+**✅ Good Release Practices:**
+- **Squash debug commits** before releasing
+- **Use descriptive commit prefixes** that will be filtered appropriately:
+  - `debug:` - Debug/troubleshooting commits (filtered out)
+  - `chore:` - Maintenance tasks (filtered out)  
+  - `refactor:` - Code restructuring (filtered out)
+  - `feat:` - New features (included in release notes)
+  - `fix:` - Bug fixes (included in release notes)
+
+**❌ Avoid These Patterns:**
+- Releasing during active debugging sessions
+- Including multiple unrelated commits in a single release
+- Adding commits with generic messages like "fix stuff"
+
+**🔧 Emergency Fix Protocol:**
+If you need to release during debugging:
+1. **Squash commits** with `git rebase -i HEAD~n`
+2. **Use `[skip changelog]`** prefix for commits that shouldn't appear
+3. **Consider patch releases** (v1.0.21 → v1.0.22) instead of jumping versions
+
+**📝 Commit Message Examples:**
+```bash
+# These will be INCLUDED in release notes:
+git commit -m "feat: add new portfolio analysis feature"
+git commit -m "fix: resolve CSV parsing error for dividend records"
+
+# These will be EXCLUDED from release notes:
+git commit -m "debug: add logging for CI compilation issue"
+git commit -m "chore: update linting configuration" 
+git commit -m "refactor: reorganize calculator package structure"
+git commit -m "[skip changelog] temporary debugging commit"
+```
+
+### ⚠️ Critical: Tag Naming Convention
+
+**ALWAYS use semantic version tags:** `vX.Y.Z` or `vX.Y.Z-suffix`
+
+**❌ NEVER create tags with arbitrary names like:**
+- `list`, `test`, `debug`, `temp`
+- `release-candidate`, `rc`, `alpha`  
+- Non-version strings
+
+**Why this matters:**
+- GoReleaser uses `git describe --tags --abbrev=0` to find the previous release
+- Non-version tags interfere with this detection
+- This causes **duplicate commits** in release notes from previous releases
+- Example: If a `list` tag exists between v1.0.2 and v1.0.21, GoReleaser will include v1.0.2's commits in v1.0.21's release notes
+
+**✅ Correct tag examples:**
+```bash
+git tag v1.0.0        # ✅ Major release
+git tag v1.2.3        # ✅ Minor/patch release  
+git tag v2.0.0-beta.1 # ✅ Pre-release
+git tag v1.0.0-rc.1   # ✅ Release candidate
+```
+
+**❌ Problematic tag examples:**
+```bash
+git tag list          # ❌ Breaks changelog generation
+git tag test          # ❌ Interferes with previous tag detection
+git tag debug-fix     # ❌ Will be detected as "previous release"
+```
+
+**Recovery:** If you accidentally create a problematic tag:
+```bash
+git tag -d problematic-tag                    # Delete locally
+git push origin :refs/tags/problematic-tag    # Delete from remote
+```
+
 ---
 
 For questions about the release process, see:
