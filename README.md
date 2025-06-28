@@ -5,7 +5,7 @@
 > A comprehensive Go application for processing Trading 212 CSV exports and calculating tax obligations with modern tooling and beautiful UI.
 
 [![CI/CD](https://github.com/Lizzergas/go-t212-taxes/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/Lizzergas/go-t212-taxes/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/Lizzergas/go-t212-taxes)](https://goreportcard.com/report/github.com/Lizzergas/go-t212-taxes)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Lizzergas/go-t212-taxes)](https://goreportcard.com/report/github.com/Lizzergas/go-t212-taxes))
 [![codecov](https://codecov.io/gh/Lizzergas/go-t212-taxes/branch/main/graph/badge.svg)](https://codecov.io/gh/Lizzergas/go-t212-taxes)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/Lizzergas/go-t212-taxes)](https://github.com/Lizzergas/go-t212-taxes)
