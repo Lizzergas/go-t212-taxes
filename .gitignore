@@ -50,3 +50,6 @@ config.override.yaml
 # Temporary lint files
 lint_results.json
 lint-output.txt
+
+# VSCode workspace file
+*.code-workspace
