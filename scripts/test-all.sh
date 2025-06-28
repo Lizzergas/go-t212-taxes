@@ -188,11 +188,37 @@ if [[ "$SKIP_LINT" == "false" ]]; then
             exit 1
         fi
     else
-        # Fallback to direct golangci-lint
-        if golangci-lint run --timeout=10m; then
-            print_success "Linting completed successfully"
+        # Fallback to direct golangci-lint - capture output to show issues
+        LINT_OUTPUT=$(golangci-lint run --timeout=10m 2>&1 || true)
+        
+        # Count issues by looking for lines that match the error pattern
+        ISSUE_COUNT=$(echo "$LINT_OUTPUT" | grep -c "^[^:]*:[0-9]*:[0-9]*:" || echo "0")
+        
+        # Also try to extract from summary line if present
+        SUMMARY_COUNT=$(echo "$LINT_OUTPUT" | grep -o "[0-9]* issues:" | grep -o "[0-9]*" || echo "")
+        
+        # Use summary count if available, otherwise use line count
+        if [[ "$SUMMARY_COUNT" =~ ^[0-9]+$ ]] && [ "$SUMMARY_COUNT" -gt 0 ]; then
+            ISSUE_COUNT=$SUMMARY_COUNT
+        fi
+        
+        # Ensure we have a valid number
+        if ! [[ "$ISSUE_COUNT" =~ ^[0-9]+$ ]]; then
+            ISSUE_COUNT=0
+        fi
+        
+        print_info "Found $ISSUE_COUNT linting issues"
+        
+        # Show issues if any were found
+        if [ "$ISSUE_COUNT" -gt 0 ]; then
+            echo ""
+            print_info "📋 Linting issues found:"
+            echo "------------------------"
+            echo "$LINT_OUTPUT"
+            echo ""
+            print_warning "Linting found $ISSUE_COUNT issues"
         else
-            print_warning "Linting found issues (check output above)"
+            print_success "Linting completed successfully"
         fi
     fi
     echo ""

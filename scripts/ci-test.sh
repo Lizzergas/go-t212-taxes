@@ -46,6 +46,15 @@ fi
 
 echo "Found $ISSUE_COUNT linting issues"
 
+# Show issues if any were found
+if [ "$ISSUE_COUNT" -gt 0 ]; then
+  echo
+  echo "📋 Linting issues found:"
+  echo "------------------------"
+  echo "$LINT_OUTPUT"
+  echo
+fi
+
 # Quality gate: Allow up to 15 issues (current: 5)
 THRESHOLD=15
 if [ "$ISSUE_COUNT" -le "$THRESHOLD" ]; then
@@ -54,9 +63,7 @@ if [ "$ISSUE_COUNT" -le "$THRESHOLD" ]; then
   echo "🎉 This commit will pass CI!"
   
   if [ "$ISSUE_COUNT" -gt 0 ]; then
-    echo
-    echo "💡 Consider fixing the $ISSUE_COUNT remaining issues for better code quality:"
-    echo "$LINT_OUTPUT" | head -10
+    echo "💡 Consider fixing the $ISSUE_COUNT remaining issues for better code quality"
   fi
   
   exit 0
@@ -64,8 +71,5 @@ else
   echo "❌ Quality gate FAILED: $ISSUE_COUNT issues (> $THRESHOLD allowed)" 
   echo
   echo "🚨 This commit will FAIL CI!"
-  echo
-  echo "Issues found:"
-  echo "$LINT_OUTPUT"
   exit 1
 fi 

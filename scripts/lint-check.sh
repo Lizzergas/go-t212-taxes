@@ -84,6 +84,21 @@ if [ "$HAVE_JQ" = true ] && [ -s lint_results.json ] && jq . lint_results.json >
     echo
     echo "🔧 Issue breakdown:"
     jq -r '.Issues | group_by(.FromLinter) | .[] | "  \(.[0].FromLinter): \(length)"' lint_results.json 2>/dev/null || echo "  (Could not parse issue breakdown)"
+    
+    echo
+    echo "📋 Specific issues found:"
+    echo "------------------------"
+    if jq -r '.Issues[] | "\(.Pos.Filename):\(.Pos.Line):\(.Pos.Column): \(.Text) (\(.FromLinter))"' lint_results.json 2>/dev/null; then
+        true  # jq succeeded
+    else
+        # Fallback to regular golangci-lint output if JSON parsing fails
+        golangci-lint run --timeout=10m 2>&1 | head -20
+    fi
+elif [ "$ISSUE_COUNT" -gt 0 ]; then
+    echo
+    echo "📋 Specific issues found:"
+    echo "------------------------"
+    golangci-lint run --timeout=10m 2>&1 | head -20
 fi
 
 echo
@@ -105,5 +120,10 @@ else
     echo "   3. Re-run this script to verify"
     echo
     echo -e "${YELLOW}Note: CI will still pass but this indicates code quality concerns${NC}"
+    # Clean up temporary file
+    rm -f lint_results.json
     exit 1
-fi 
+fi
+
+# Clean up temporary file
+rm -f lint_results.json 
