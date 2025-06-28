@@ -406,6 +406,42 @@ git commit -m "refactor: reorganize calculator package structure"
 git commit -m "[skip changelog] temporary debugging commit"
 ```
 
+### ⚠️ Critical: Tag Naming Convention
+
+**ALWAYS use semantic version tags:** `vX.Y.Z` or `vX.Y.Z-suffix`
+
+**❌ NEVER create tags with arbitrary names like:**
+- `list`, `test`, `debug`, `temp`
+- `release-candidate`, `rc`, `alpha`  
+- Non-version strings
+
+**Why this matters:**
+- GoReleaser uses `git describe --tags --abbrev=0` to find the previous release
+- Non-version tags interfere with this detection
+- This causes **duplicate commits** in release notes from previous releases
+- Example: If a `list` tag exists between v1.0.2 and v1.0.21, GoReleaser will include v1.0.2's commits in v1.0.21's release notes
+
+**✅ Correct tag examples:**
+```bash
+git tag v1.0.0        # ✅ Major release
+git tag v1.2.3        # ✅ Minor/patch release  
+git tag v2.0.0-beta.1 # ✅ Pre-release
+git tag v1.0.0-rc.1   # ✅ Release candidate
+```
+
+**❌ Problematic tag examples:**
+```bash
+git tag list          # ❌ Breaks changelog generation
+git tag test          # ❌ Interferes with previous tag detection
+git tag debug-fix     # ❌ Will be detected as "previous release"
+```
+
+**Recovery:** If you accidentally create a problematic tag:
+```bash
+git tag -d problematic-tag                    # Delete locally
+git push origin :refs/tags/problematic-tag    # Delete from remote
+```
+
 ---
 
 For questions about the release process, see:

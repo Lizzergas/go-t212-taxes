@@ -100,6 +100,36 @@ check_tag_exists() {
     fi
 }
 
+check_problematic_tags() {
+    echo -e "${BLUE}🔍 Checking for problematic tags...${NC}"
+    
+    # Check for non-version tags that could interfere with GoReleaser
+    local problematic_tags=$(git tag | grep -v -E '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$')
+    
+    if [ ! -z "$problematic_tags" ]; then
+        echo -e "${RED}❌ Error: Found non-version tags that could interfere with GoReleaser:${NC}"
+        echo "$problematic_tags"
+        echo ""
+        echo -e "${YELLOW}💡 These tags can cause GoReleaser to use wrong baseline for changelogs.${NC}"
+        echo -e "${YELLOW}💡 Remove them with: git tag -d <tag> && git push origin :refs/tags/<tag>${NC}"
+        echo ""
+        echo -e "${YELLOW}💡 Valid version tags should match: vX.Y.Z or vX.Y.Z-suffix${NC}"
+        exit 1
+    fi
+    
+    # Verify that the previous tag detection will work correctly
+    local current_commit=$(git rev-parse HEAD)
+    local prev_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "none")
+    
+    if [ "$prev_tag" != "none" ] && [[ ! $prev_tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
+        echo -e "${RED}❌ Error: Previous tag '$prev_tag' has invalid format${NC}"
+        echo -e "${YELLOW}💡 GoReleaser will use this as baseline, causing incorrect changelogs${NC}"
+        exit 1
+    fi
+    
+    echo -e "${GREEN}✅ No problematic tags found${NC}"
+}
+
 run_tests() {
     echo -e "${BLUE}🧪 Running tests...${NC}"
     if ! go test ./...; then
@@ -250,6 +280,8 @@ main() {
 
     check_tag_exists "$version"
     echo -e "${GREEN}✅ Tag doesn't exist yet${NC}"
+
+    check_problematic_tags
 
     # Skip tests and linting in dry-run for speed
     if [ "$dry_run" = false ]; then
