@@ -2,7 +2,7 @@
 cask "t212-taxes" do
   desc "A comprehensive tool for processing Trading 212 CSV exports and calculating tax obligations"
   homepage "https://github.com/Lizzergas/go-t212-taxes"
-  version "1.0.2"
+  version "1.0.21"
 
   livecheck do
     skip "Auto-generated on release."
@@ -12,23 +12,23 @@ cask "t212-taxes" do
 
   on_macos do
     on_intel do
-      url "https://github.com/Lizzergas/go-t212-taxes/releases/download/v1.0.2/go-t212-taxes-darwin-x86_64.tar.gz"
-      sha256 "639500988ba2c5d8aac72782d7d6754cd0cd399f0970c969447fa6e25855cdfd"
+      url "https://github.com/Lizzergas/go-t212-taxes/releases/download/v1.0.21/go-t212-taxes-darwin-x86_64.tar.gz"
+      sha256 "1a9069f204efdce208cd5abfb41545a8a7af01d70cbe4749eb4af429770e51e1"
     end
     on_arm do
-      url "https://github.com/Lizzergas/go-t212-taxes/releases/download/v1.0.2/go-t212-taxes-darwin-arm64.tar.gz"
-      sha256 "6fd157e3f13529b5db830ddbf900df2ea6b9a774887b267e85321ad9114a1ddb"
+      url "https://github.com/Lizzergas/go-t212-taxes/releases/download/v1.0.21/go-t212-taxes-darwin-arm64.tar.gz"
+      sha256 "1caaf5eed6ae537afb0aadd25efde841765086a81a65fece58d7a8fa290fe9b5"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://github.com/Lizzergas/go-t212-taxes/releases/download/v1.0.2/go-t212-taxes-linux-x86_64.tar.gz"
-      sha256 "5f1374a31bb843a68c5a928cccd33d97076288243242bcd0773aae259e2fd5f9"
+      url "https://github.com/Lizzergas/go-t212-taxes/releases/download/v1.0.21/go-t212-taxes-linux-x86_64.tar.gz"
+      sha256 "1328e63fc7ea4db9f916dbb1946e890a485d62b4da48c351517227754a576abd"
     end
     on_arm do
-      url "https://github.com/Lizzergas/go-t212-taxes/releases/download/v1.0.2/go-t212-taxes-linux-arm64.tar.gz"
-      sha256 "2cf6895a70aa04773177a9073b1b6b41fa237c77468bc4e9746049b065d6bdc7"
+      url "https://github.com/Lizzergas/go-t212-taxes/releases/download/v1.0.21/go-t212-taxes-linux-arm64.tar.gz"
+      sha256 "88e988d59d3964be1da5b0aedd289455184ec63f60834ebd532d622907847b8b"
     end
   end
 
