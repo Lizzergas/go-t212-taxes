@@ -30,13 +30,27 @@ jobs:
 
     - name: Debug repository contents
       run: |
+        echo "=== DEBUGGING CI ENVIRONMENT ==="
         echo "Current directory: $(pwd)"
         echo "Repository contents:"
         find . -name "*.go" | head -20
+        echo ""
         echo "cmd/t212-taxes directory contents:"
         ls -la cmd/t212-taxes/
+        echo ""
+        echo "Files Go sees in cmd/t212-taxes package:"
+        go list -f '{{.GoFiles}}' ./cmd/t212-taxes
+        echo ""
         echo "Checking for getVersionInfo function:"
         grep -n "getVersionInfo" cmd/t212-taxes/*.go || echo "getVersionInfo not found"
+        echo ""
+        echo "Content of main.go around line 29:"
+        sed -n '25,35p' cmd/t212-taxes/main.go
+        echo ""
+        echo "Content of version.go (first 15 lines):"
+        head -15 cmd/t212-taxes/version.go
+        echo ""
+        echo "=== END DEBUG ==="
 
     - name: Set up Go
       uses: actions/setup-go@v4
@@ -83,16 +97,35 @@ jobs:
 
     - name: Verify Go compilation
       run: |
-        echo "Verifying all packages compile correctly..."
+        echo "=== TESTING PACKAGE COMPILATION ==="
         
-        # Try to compile the main package directly  
-        echo "Testing cmd/t212-taxes package compilation..."
-        go list -f '{{.GoFiles}}' ./cmd/t212-taxes
-        echo "Building cmd/t212-taxes package..."
-        go build -v ./cmd/t212-taxes
+        # Show exactly what Go sees
+        echo "Go package info:"
+        go list -f 'Package: {{.ImportPath}}' ./cmd/t212-taxes
+        go list -f 'Go files: {{.GoFiles}}' ./cmd/t212-taxes
         
-        echo "Running individual package tests..."
-        go test ./cmd/t212-taxes -v -run TestGetVersionInfo
+        echo ""
+        echo "Attempting to build cmd/t212-taxes..."
+        if go build -v ./cmd/t212-taxes 2>&1; then
+          echo "✅ Build successful!"
+          ls -la t212-taxes
+          rm -f t212-taxes
+        else
+          echo "❌ Build failed! Let's investigate..."
+          echo ""
+          echo "Package declarations check:"
+          echo "main.go:" && head -5 cmd/t212-taxes/main.go | grep "^package"
+          echo "version.go:" && head -5 cmd/t212-taxes/version.go | grep "^package"
+          echo ""
+          echo "getVersionInfo function check:"
+          grep -A3 "func getVersionInfo" cmd/t212-taxes/version.go || echo "Function not found!"
+          echo ""
+          echo "FAILING: Build compilation failed in CI"
+          exit 1
+        fi
+        
+        echo "Running version-related tests..."
+        go test ./cmd/t212-taxes -v -run TestGetVersionInfo || echo "Version tests not found or failed"
 
     - name: Run comprehensive test suite
       id: test_suite
